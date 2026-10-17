@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: Upstream ref to merge
-        required: true
-        default: upstream/main
+        description: Upstream ref to merge, the newest stable release when empty
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -31,9 +31,10 @@ jobs:
       sync-status: ${{ steps.sync.outputs.status }}
       check-status: ${{ steps.check.outputs.status }}
       upstream: ${{ steps.commit.outputs.upstream }}
+      name: ${{ steps.commit.outputs.name }}
       branch: ${{ steps.commit.outputs.branch }}
     env:
-      REF: ${{ inputs.ref || 'upstream/main' }}
+      REF: ${{ inputs.ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -67,7 +68,7 @@ jobs:
         run: |
           mkdir "$RUNNER_TEMP/out"
           status=0
-          promtail/scripts/sync-upstream.sh "$REF" 2>&1 | tee "$RUNNER_TEMP/out/sync.log" || status=$?
+          promtail/scripts/sync-upstream.sh ${REF:+"$REF"} 2>&1 | tee "$RUNNER_TEMP/out/sync.log" || status=$?
           echo "status=$status" >>"$GITHUB_OUTPUT"
           if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
             echo "merged=true" >>"$GITHUB_OUTPUT"
@@ -114,13 +115,20 @@ jobs:
         run: |
           upstream=$(git rev-parse MERGE_HEAD)
           short=$(git rev-parse --short=12 "$upstream")
-          branch="promtail/sync-$short"
+          if name=$(git describe --tags --exact-match --match 'v[0-9]*' "$upstream" 2>/dev/null); then
+            link="https://github.com/grafana/alloy/releases/tag/$name"
+          else
+            name=$short
+            link="https://github.com/grafana/alloy/commit/$upstream"
+          fi
+          branch="promtail/sync-$name"
           # Conflicts are committed with their markers so they can be resolved on the pull request branch.
           git add -u
           git commit --no-edit --cleanup=strip
           git bundle create "$RUNNER_TEMP/out/sync.bundle" "origin/$GITHUB_REF_NAME..HEAD"
           {
             echo "upstream=$upstream"
+            echo "name=$name"
             echo "branch=$branch"
           } >>"$GITHUB_OUTPUT"
 
@@ -133,8 +141,9 @@ jobs:
             sync_result=passed
           fi
           {
-            echo "Merges [grafana/alloy@$short](https://github.com/grafana/alloy/commit/$upstream) (\`$REF\`)," \
-              "upstream commits: [$(git rev-list --count HEAD^1..HEAD^2)](https://github.com/grafana/alloy/compare/$base...$upstream)."
+            echo "Merges grafana/alloy [$name]($link) (\`$short\`)," \
+              "upstream commits: [$(git rev-list --count HEAD^1..HEAD^2)](https://github.com/grafana/alloy/compare/$base...$upstream)." \
+              "Upstream files are identical to $name."
             echo
             echo "| Step | Result |"
             echo "|---|---|"
@@ -163,8 +172,7 @@ jobs:
           git fetch origin && git switch $branch
           \`\`\`
 
-          - Merge conflicts: resolve the committed conflict markers. Fork-owned files live only in \`promtail/\` and \`.github/\`;
-            any other path must stay identical to upstream: \`git checkout $upstream -- <path>\`.
+          - Merge conflicts: upstream paths are taken from $name, resolve the committed conflict markers in fork files.
           - A patch that no longer applies: \`make -C promtail patch-start FILE=<file>\`, fix the file,
             \`make -C promtail patch-save FILE=<file>\`.
           - A changed pinned replacement: port the upstream change to \`promtail/overlay/_files/<file>\` and update its \`blob=\` pin.
@@ -211,6 +219,7 @@ jobs:
       pull-requests: write
     env:
       BRANCH: ${{ needs.merge.outputs.branch }}
+      NAME: ${{ needs.merge.outputs.name }}
       UPSTREAM: ${{ needs.merge.outputs.upstream }}
     steps:
       - name: Checkout
@@ -261,7 +270,7 @@ jobs:
           GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
           FAILED: ${{ needs.merge.outputs.sync-status != '0' || (needs.merge.outputs.check-status != '' && needs.merge.outputs.check-status != '0') }}
         run: |
-          title="Sync upstream grafana/alloy@${UPSTREAM:0:12}"
+          title="Sync upstream grafana/alloy $NAME"
           body="$RUNNER_TEMP/sync/body.md"
           pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
           if [ -z "$pr" ]; then

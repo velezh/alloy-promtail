@@ -57,10 +57,9 @@ jobs:
         env:
           UPSTREAM: ${{ steps.tag.outputs.upstream }}
         run: |
-          git fetch --quiet --no-tags https://github.com/grafana/alloy.git 'refs/tags/v*:refs/tags/v*'
-          described=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-promtail.*' HEAD)
-          if [ "$described" != "$UPSTREAM" ]; then
-            echo "::error::$TAG names upstream $UPSTREAM, but the latest upstream release merged into it is $described"
+          git fetch --quiet --no-tags https://github.com/grafana/alloy.git "refs/tags/$UPSTREAM:refs/tags/$UPSTREAM"
+          if ! git diff --quiet "$UPSTREAM" HEAD -- . ':(exclude)promtail' ':(exclude).github'; then
+            echo "::error::upstream files of $TAG differ from grafana/alloy $UPSTREAM, sync the fork to $UPSTREAM first"
             exit 1
           fi
           newest=$(git tag -l 'v*-promtail.*' | grep -v -- '-rc\.' | sort -V | tail -n 1)
@@ -167,8 +166,8 @@ jobs:
             exit 0
           fi
           cat >notes.md <<EOF
-          Log collection distribution of Grafana Alloy, built from the upstream main branch after
-          [$UPSTREAM](https://github.com/grafana/alloy/releases/tag/$UPSTREAM).
+          Log collection distribution of Grafana Alloy
+          [$UPSTREAM](https://github.com/grafana/alloy/releases/tag/$UPSTREAM): upstream files are identical to the release.
 
           Container image: \`$IMAGE:$VERSION\` (\`$DIGEST\`), linux/amd64 and linux/arm64,
           with SBOM and provenance attestations.

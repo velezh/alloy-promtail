@@ -18,7 +18,7 @@ eBPF, cloud SDKs and a web UI. alloy-promtail links none of that:
 | all groups | 99.0 MiB |
 
 Upstream code is never edited; the build applies an overlay at compile time,
-so syncing with `grafana/alloy` is a plain `git merge`.
+so syncing with an upstream release is a plain `git merge`.
 
 ## Quick start
 
@@ -173,21 +173,31 @@ silently growing the binary or changing behavior:
 
 ## Upstream sync
 
-The fork follows upstream `main`; the `upstream` remote has push disabled.
+The fork follows upstream releases; the `upstream` remote has push disabled.
 
 ```sh
-promtail/scripts/sync-upstream.sh            # fetch and merge upstream/main, no commit
+promtail/scripts/sync-upstream.sh            # merge the newest vX.Y.Z release, no commit
+promtail/scripts/sync-upstream.sh v1.21.0    # or a given tag, branch or commit
 make -C promtail check COMPONENT_GROUPS="k8s cloud secretfilter"
 git commit
 ```
 
-The script merges with `--no-commit`, removes upstream workflows (only
-`promtail-*.yml` run in the fork), verifies the overlay and the Go version and
-prints which manifest paths changed upstream. After a manual `git merge`, run
+The script merges the tagged commit with `--no-commit`, then replaces every
+upstream path with its content in the tag; only fork files (`promtail/`,
+`.github/README.md`, `.github/workflows/promtail-*.yml`) keep their own. After a
+sync the upstream sources are identical to the release, and the merge commit
+records both histories. Upstream release branches cherry-pick from `main` and
+bump the same version and changelog lines, so a regular 3-way merge across
+release lines (`v1.19.x` → `v1.20.x`) conflicts on files the fork never
+changes; taking the upstream tree avoids that.
+
+The script also removes upstream workflows (only `promtail-*.yml` run in the
+fork), verifies the overlay and the Go version and prints which manifest paths
+changed. After a manual `git merge`, run
 `promtail/scripts/sync-upstream.sh --prune-workflows`.
 
-`promtail-sync.yml` runs the same weekly and opens a pull request with the
-results. The merge and all checks run in a job without write permissions or
+`promtail-sync.yml` runs the same weekly and opens a pull request named after
+the release, e.g. `Sync upstream grafana/alloy v1.20.2`. The merge and all checks run in a job without write permissions or
 secrets; a second job only verifies the merge, pushes the branch and opens the
 pull request. Required setup:
 
@@ -201,6 +211,7 @@ Fixing a failed sync:
 
 | Failure | Fix |
 |---|---|
+| conflicts in fork files | upstream paths are already taken from the tag; resolve `promtail/` or `.github/` conflicts, which only happen if upstream adds files there |
 | patch does not apply | `make -C promtail patch-start FILE=<path>` applies it, falling back to a 3-way merge with conflict markers; edit, then `make -C promtail patch-save FILE=<path>`. Works in the middle of a merge. For an ambiguous hunk add `CONTEXT=8` to `patch-save`. |
 | pinned `replace` changed | the error prints `git diff <old> <new>`; port the change to `_files/<path>` and update `blob=` |
 | denied package or new module | follow the printed import chain and cut it with a manifest entry; if the dependency is wanted, add the module to `modules.txt` (`if <group>` for a group-only module) or drop the denylist rule |
@@ -222,19 +233,22 @@ that have a registry file.
 
 ## Releases
 
-Release tags are `v<upstream>-promtail.<n>`: the latest upstream release merged
-into `main`, plus a fork build number.
+Release tags are `v<upstream>-promtail.<n>`: the upstream release `main` is
+synced to, plus a fork build number. Release from `main` after the sync pull
+request is merged and CI is green:
 
 ```sh
-git fetch upstream --tags
-git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-promtail.*'   # v1.20.0
-git tag v1.20.0-promtail.1
-git push origin v1.20.0-promtail.1
+git switch main && git pull
+git tag v1.20.1-promtail.1
+git push origin v1.20.1-promtail.1
 ```
 
-`promtail-release.yml` rejects a tag whose upstream part differs from
-`git describe`. An upstream release candidate gives a prerelease, e.g.
-`v1.21.0-rc.0-promtail.1`.
+`promtail-release.yml` rejects the tag unless the upstream files of the tagged
+commit are identical to grafana/alloy `v1.20.1`, so a release always ships the
+exact upstream release plus the overlay. Syncing to an upstream release
+candidate (`sync-upstream.sh v1.21.0-rc.0`) gives a prerelease tag
+`v1.21.0-rc.0-promtail.1`. A fork-only change without an upstream update gets
+the next build number: `v1.20.1-promtail.2`.
 
 Published artifacts:
 
