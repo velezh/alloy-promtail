@@ -1,0 +1,274 @@
+name: promtail sync
+
+on:
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Upstream ref to merge
+        required: true
+        default: upstream/main
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Builds and tests unreviewed upstream code, so it holds no write token and no secrets.
+  merge:
+    runs-on: ubuntu-24.04
+    outputs:
+      merged: ${{ steps.sync.outputs.merged }}
+      sync-status: ${{ steps.sync.outputs.status }}
+      check-status: ${{ steps.check.outputs.status }}
+      upstream: ${{ steps.commit.outputs.upstream }}
+      branch: ${{ steps.commit.outputs.branch }}
+    env:
+      REF: ${{ inputs.ref || 'upstream/main' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install libsystemd headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsystemd-dev
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/grafana/alloy.git
+          git remote set-url --push upstream DISABLED
+
+      - name: Merge upstream
+        id: sync
+        env:
+          # The merge may raise the go directive above the Go version set up from the fork's go.mod.
+          GOTOOLCHAIN: auto
+        run: |
+          mkdir "$RUNNER_TEMP/out"
+          status=0
+          promtail/scripts/sync-upstream.sh "$REF" 2>&1 | tee "$RUNNER_TEMP/out/sync.log" || status=$?
+          echo "status=$status" >>"$GITHUB_OUTPUT"
+          if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+            echo "merged=true" >>"$GITHUB_OUTPUT"
+            if [ -n "$(git ls-files -u)" ]; then echo "conflicts=true" >>"$GITHUB_OUTPUT"; fi
+          fi
+
+      - name: Check
+        id: check
+        if: steps.sync.outputs.merged == 'true' && steps.sync.outputs.status == '0'
+        env:
+          GOTOOLCHAIN: auto
+        run: |
+          status=0
+          for groups in "" "k8s cloud secretfilter"; do
+            name=${groups:-base}
+            echo "::group::make -C promtail check ($name)"
+            if make -C promtail check COMPONENT_GROUPS="$groups" 2>&1 | tee "$RUNNER_TEMP/check.log"; then
+              result=passed
+            else
+              status=1
+              result=failed
+              {
+                echo
+                echo "<details><summary>make -C promtail check ($name) output, last 100 lines</summary>"
+                echo
+                echo '```'
+                tail -n 100 "$RUNNER_TEMP/check.log"
+                echo '```'
+                echo "</details>"
+              } >>"$RUNNER_TEMP/check-failures.md"
+            fi
+            echo "::endgroup::"
+            echo "| \`make -C promtail check\` ($name) | $result |" >>"$RUNNER_TEMP/check.md"
+          done
+          echo "status=$status" >>"$GITHUB_OUTPUT"
+
+      - name: Commit merge
+        id: commit
+        if: steps.sync.outputs.merged == 'true'
+        env:
+          SYNC_STATUS: ${{ steps.sync.outputs.status }}
+          CONFLICTS: ${{ steps.sync.outputs.conflicts }}
+          CHECK_STATUS: ${{ steps.check.outputs.status }}
+        run: |
+          upstream=$(git rev-parse MERGE_HEAD)
+          short=$(git rev-parse --short=12 "$upstream")
+          branch="promtail/sync-$short"
+          # Conflicts are committed with their markers so they can be resolved on the pull request branch.
+          git add -u
+          git commit --no-edit --cleanup=strip
+          git bundle create "$RUNNER_TEMP/out/sync.bundle" "origin/$GITHUB_REF_NAME..HEAD"
+          {
+            echo "upstream=$upstream"
+            echo "branch=$branch"
+          } >>"$GITHUB_OUTPUT"
+
+          base=$(git merge-base HEAD^1 HEAD^2)
+          if [ "$CONFLICTS" = true ]; then
+            sync_result="failed: merge conflicts"
+          elif [ "$SYNC_STATUS" != 0 ]; then
+            sync_result="failed: the fork does not build against the merged sources"
+          else
+            sync_result=passed
+          fi
+          {
+            echo "Merges [grafana/alloy@$short](https://github.com/grafana/alloy/commit/$upstream) (\`$REF\`)," \
+              "upstream commits: [$(git rev-list --count HEAD^1..HEAD^2)](https://github.com/grafana/alloy/compare/$base...$upstream)."
+            echo
+            echo "| Step | Result |"
+            echo "|---|---|"
+            echo "| \`promtail/scripts/sync-upstream.sh\` | $sync_result |"
+            if [ -f "$RUNNER_TEMP/check.md" ]; then
+              cat "$RUNNER_TEMP/check.md"
+            else
+              echo "| \`make -C promtail check\` | skipped |"
+            fi
+            echo
+            echo "<details><summary>sync-upstream.sh output</summary>"
+            echo
+            echo '```'
+            tail -n 100 "$RUNNER_TEMP/out/sync.log"
+            echo '```'
+            echo "</details>"
+            if [ -f "$RUNNER_TEMP/check-failures.md" ]; then
+              cat "$RUNNER_TEMP/check-failures.md"
+            fi
+            if [ "$SYNC_STATUS" != 0 ] || [ "${CHECK_STATUS:-0}" != 0 ]; then
+              cat <<EOF
+
+          ### Fixing this pull request
+
+          \`\`\`sh
+          git fetch origin && git switch $branch
+          \`\`\`
+
+          - Merge conflicts: resolve the committed conflict markers. Fork-owned files live only in \`promtail/\` and \`.github/\`;
+            any other path must stay identical to upstream: \`git checkout $upstream -- <path>\`.
+          - A patch that no longer applies: \`make -C promtail patch-start FILE=<file>\`, fix the file,
+            \`make -C promtail patch-save FILE=<file>\`.
+          - A changed pinned replacement: port the upstream change to \`promtail/overlay/_files/<file>\` and update its \`blob=\` pin.
+          - A newer Go in go.mod: update the golang image tag and digest in \`promtail/Dockerfile\`.
+          - Other failures: see \`promtail/README.md\`.
+
+          Verify with \`make -C promtail check\` and \`make -C promtail check COMPONENT_GROUPS="k8s cloud secretfilter"\`, then push.
+          EOF
+            fi
+            echo
+            echo "Merge with a merge commit: squash or rebase drops the upstream ancestry the next sync relies on."
+          } >"$RUNNER_TEMP/out/body.md"
+          cat "$RUNNER_TEMP/out/body.md" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Upload merge
+        if: steps.commit.outputs.branch != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sync
+          path: ${{ runner.temp }}/out
+          retention-days: 7
+
+      - name: Report failures
+        env:
+          SYNC_STATUS: ${{ steps.sync.outputs.status }}
+          CHECK_STATUS: ${{ steps.check.outputs.status }}
+        run: |
+          if [ "$SYNC_STATUS" != 0 ]; then
+            echo "::error::sync-upstream.sh failed"
+            exit 1
+          fi
+          if [ "${CHECK_STATUS:-0}" != 0 ]; then
+            echo "::error::make -C promtail check failed"
+            exit 1
+          fi
+
+  # Runs only git and gh: no code from the merged tree is executed with the write token.
+  publish:
+    needs: merge
+    if: always() && needs.merge.outputs.branch != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      BRANCH: ${{ needs.merge.outputs.branch }}
+      UPSTREAM: ${{ needs.merge.outputs.upstream }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download merge
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sync
+          path: ${{ runner.temp }}/sync
+
+      - name: Verify merge
+        run: |
+          git fetch --quiet "$RUNNER_TEMP/sync/sync.bundle" HEAD
+          merge=$(git rev-parse FETCH_HEAD)
+          [ "$(git rev-parse "$merge^1")" = "$(git rev-parse HEAD)" ] || { echo "::error::the merge is not based on $GITHUB_REF_NAME"; exit 1; }
+          [ "$(git rev-parse "$merge^2")" = "$UPSTREAM" ] || { echo "::error::the merge does not merge $UPSTREAM"; exit 1; }
+          git diff --quiet HEAD "$merge" -- .github/workflows || { echo "::error::the merge changes .github/workflows"; exit 1; }
+          git fetch --quiet --no-tags https://github.com/grafana/alloy.git "$UPSTREAM" || { echo "::error::$UPSTREAM is not a grafana/alloy commit"; exit 1; }
+          git update-ref refs/sync/merge "$merge"
+
+      - name: Push branch
+        id: push
+        env:
+          # Pushing merges of upstream commits that touch .github/workflows needs
+          # a token with the "workflows" scope, GITHUB_TOKEN cannot get it.
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
+        run: |
+          lease=()
+          if remote=$(git rev-parse -q --verify "refs/remotes/origin/$BRANCH"); then
+            if [ "$(git rev-parse -q --verify "$remote^2")" != "$UPSTREAM" ]; then
+              echo "::notice::$BRANCH has commits on top of the sync merge, leaving it unchanged"
+              exit 0
+            fi
+            lease=("--force-with-lease=refs/heads/$BRANCH:$remote")
+          fi
+          gh auth setup-git
+          git push "${lease[@]}" origin "refs/sync/merge:refs/heads/$BRANCH"
+          echo "pushed=true" >>"$GITHUB_OUTPUT"
+
+      - name: Open or update pull request
+        if: steps.push.outputs.pushed == 'true'
+        env:
+          # Pull requests opened with GITHUB_TOKEN do not trigger promtail-ci.yml.
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
+          FAILED: ${{ needs.merge.outputs.sync-status != '0' || (needs.merge.outputs.check-status != '' && needs.merge.outputs.check-status != '0') }}
+        run: |
+          title="Sync upstream grafana/alloy@${UPSTREAM:0:12}"
+          body="$RUNNER_TEMP/sync/body.md"
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -z "$pr" ]; then
+            flags=(--base "$GITHUB_REF_NAME" --head "$BRANCH" --title "$title" --body-file "$body")
+            if [ "$FAILED" = true ]; then flags+=(--draft); fi
+            gh pr create "${flags[@]}"
+          else
+            gh pr edit "$pr" --title "$title" --body-file "$body"
+            if [ "$FAILED" = true ]; then gh pr ready "$pr" --undo; else gh pr ready "$pr"; fi
+          fi

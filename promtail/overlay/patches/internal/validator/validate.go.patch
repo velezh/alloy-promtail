@@ -1,0 +1,18 @@
+diff --git a/internal/validator/validate.go b/internal/validator/validate.go
+index 825ad76aa..e67d5c23b 100644
+--- a/internal/validator/validate.go
++++ b/internal/validator/validate.go
+@@ -269,7 +269,12 @@ func (v *validator) validateImport(node *node, register bool, s *state) {
+ 		node.args = &importsource.HTTPArguments{}
+ 		s.graph.Add(node)
+ 	case importsource.BlockNameGit:
+-		node.args = &importsource.GitArguments{}
++		node.diags.Add(diag.Diagnostic{
++			Severity: diag.SeverityLevelError,
++			Message:  importsource.ErrGitUnsupported.Error(),
++			StartPos: ast.StartPos(node.block).Position(),
++			EndPos:   ast.EndPos(node.block).Position(),
++		})
+ 		s.graph.Add(node)
+ 	}
+ 

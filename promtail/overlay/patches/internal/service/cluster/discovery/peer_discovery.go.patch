@@ -1,0 +1,34 @@
+diff --git a/internal/service/cluster/discovery/peer_discovery.go b/internal/service/cluster/discovery/peer_discovery.go
+index dec3a3c95..136e82c37 100644
+--- a/internal/service/cluster/discovery/peer_discovery.go
++++ b/internal/service/cluster/discovery/peer_discovery.go
+@@ -6,7 +6,6 @@ import (
+ 	"net"
+ 	"strings"
+ 
+-	godiscover "github.com/hashicorp/go-discover"
+ 	"go.opentelemetry.io/otel/trace"
+ )
+ 
+@@ -24,10 +23,6 @@ type Options struct {
+ 	lookupSRVFn lookupSRVFn
+ 	// lookupIPFn is a function that can be used to lookup addresses using A/AAAA DNS records. If nil, net.LookupIP is used. Used for testing.
+ 	lookupIPFn lookupIPFn
+-
+-	// goDiscoverFactory is a function that can be used to create a new discover.Discover instance.
+-	// If nil, godiscover.New is used. Used for testing.
+-	goDiscoverFactory goDiscoverFactory
+ }
+ 
+ // lookupSRVFn is a function that can be used to lookup SRV records. Matches net.LookupSRV signature.
+@@ -36,10 +31,6 @@ type lookupSRVFn func(service, proto, name string) (string, []*net.SRV, error)
+ // lookupIPFn is a function that can be used to lookup IP addresses using A/AAAA DNS records. Matches net.LookupIP signature.
+ type lookupIPFn func(host string) ([]net.IP, error)
+ 
+-// goDiscoverFactory is a function that can be used to create a new discover.Discover instance.
+-// Matches discover.New signature.
+-type goDiscoverFactory func(opts ...godiscover.Option) (*godiscover.Discover, error)
+-
+ func NewPeerDiscoveryFn(opts Options) (DiscoverFn, error) {
+ 	if opts.Logger == nil {
+ 		return nil, fmt.Errorf("logger is required, got nil")

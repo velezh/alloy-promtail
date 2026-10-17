@@ -1,0 +1,14 @@
+# Build context of promtail/Dockerfile: the main module with its embedded
+# release manifest, the syntax module it replaces locally and the fork sources.
+*
+!go.mod
+!go.sum
+!*.go
+!.release-please-manifest.json
+!internal
+!syntax
+!promtail
+
+**/*_test.go
+**/testdata
+**/node_modules

@@ -1,0 +1,65 @@
+# alloy-promtail overlay manifest.
+#
+# Every line turns one upstream path into its alloy-promtail variant at build
+# time through `go build -overlay`; upstream sources are never edited in git.
+#
+#   delete  <file>                 drop the upstream file
+#   replace <file> [blob=<sha1>]   use _files/<file> instead of the upstream file;
+#                                  blob pins the upstream revision _files/<file> was
+#                                  derived from, the build fails once upstream changes it
+#   patch   <file>                 apply patches/<file>.patch (made with `git diff`); every
+#                                  hunk must match exactly one location of the upstream file
+#   keep    <dir> <file>...        drop every non-test Go file of <dir> except the listed ones
+#
+# The leading underscore keeps _files/ out of `go build ./...`.
+#
+# Sizes are linux/amd64 stripped binary savings measured when the entry was added;
+# entries without a size align upstream code with the removed features.
+
+# Components are registered by promtail/components instead of the full upstream list.
+replace internal/component/all/all.go
+
+# `alloy convert` and --config.format link every converter together with the
+# OpenTelemetry Collector and all Prometheus service discoveries.
+replace internal/converter/converter.go
+
+# `alloy tools` only serves prometheus.remote_write WAL tooling.
+replace internal/alloycli/cmd_tools.go
+
+# `run --help` describes the removed UI and pprof served by default.
+patch internal/alloycli/cmd_run.go
+
+# Registers an OTel k8sattributes feature gate that Alloy does not enable;
+# pulls the whole k8s client-go into the core (-18 MiB). Pinned: an upstream
+# change may enable a gate that depends on the removed import.
+replace internal/util/otel_feature_gate.go blob=d243e523f0e8b497915fea6b52c14d1f3b50fe91
+
+# --cluster.discover-peers links hashicorp/go-discover with AWS, Azure, GCE,
+# vSphere, DigitalOcean and other cloud SDKs (-24.6 MiB).
+# --cluster.join-addresses keeps working.
+patch internal/service/cluster/discovery/go_discovery.go
+patch internal/service/cluster/discovery/peer_discovery.go
+
+# import.git links go-git (-3.3 MiB). The validator reports the block as
+# unsupported instead of type checking it against the removed arguments.
+replace internal/nodeconf/importsource/import_git.go
+patch internal/validator/validate.go
+
+# The pyroscope data flow edge links the eBPF profiler and cilium/ebpf (-1.5 MiB).
+patch internal/runtime/internal/controller/loader.go
+
+# The runtime only needs the otelcol.Consumer interface; config_*.go link the
+# OTel Collector config packages (-1.0 MiB).
+keep internal/component/otelcol consumer.go
+
+# Drops the web UI, its JSON API, GraphQL and live debugging endpoints (-1.8 MiB).
+patch internal/service/ui/ui.go
+
+# The promtail scrape config links every Prometheus service discovery and the
+# Kafka client; loki.source.gelf only needs GelfTargetConfig (-38 MiB).
+replace internal/loki/promtail/scrapeconfig/config.go blob=4033f06c2ecdd23710396d6e92cae446a6d104f3
+
+# Kubernetes components only need the client config and event queue; the rule
+# group helpers of the loki/mimir rules components link Alertmanager config,
+# AWS SigV4, franz-go and the PromQL engine (-2.4 MiB with the k8s group).
+keep internal/component/common/kubernetes event.go kubernetes.go

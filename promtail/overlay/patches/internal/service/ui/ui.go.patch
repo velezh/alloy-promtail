@@ -1,0 +1,63 @@
+diff --git a/internal/service/ui/ui.go b/internal/service/ui/ui.go
+index 9b7930f60..9e36e284f 100644
+--- a/internal/service/ui/ui.go
++++ b/internal/service/ui/ui.go
+@@ -5,19 +5,12 @@ import (
+ 	"context"
+ 	"fmt"
+ 	"log/slog"
+-	"net/http"
+-	"path"
+-
+-	"github.com/gorilla/mux"
+ 
+ 	"github.com/grafana/alloy/internal/featuregate"
+ 	"github.com/grafana/alloy/internal/service"
+-	graphql_service "github.com/grafana/alloy/internal/service/graphql"
+ 	http_service "github.com/grafana/alloy/internal/service/http"
+ 	"github.com/grafana/alloy/internal/service/livedebugging"
+ 	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
+-	"github.com/grafana/alloy/internal/web/api"
+-	"github.com/grafana/alloy/internal/web/ui"
+ )
+ 
+ // ServiceName defines the name used for the UI service.
+@@ -55,8 +48,7 @@ func New(opts Options) *Service {
+ }
+ 
+ var (
+-	_ service.Service             = (*Service)(nil)
+-	_ http_service.ServiceHandler = (*Service)(nil)
++	_ service.Service = (*Service)(nil)
+ )
+ 
+ // Definition returns the definition of the HTTP service.
+@@ -87,28 +79,3 @@ func (s *Service) Update(newConfig any) error {
+ func (s *Service) Data() any {
+ 	return nil
+ }
+-
+-// ServiceHandler implements [http_service.ServiceHandler]. It returns the HTTP
+-// endpoints to host the UI.
+-func (s *Service) ServiceHandler(host service.Host) (base string, handler http.Handler) {
+-	router := mux.NewRouter()
+-
+-	alloyApi := api.NewAlloyAPI(host, s.opts.CallbackManager, s.opts.Logger)
+-	alloyApi.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), router)
+-
+-	if s.opts.EnableGraphQL {
+-		graphql_service.RegisterRoutes(graphql_service.RegisterRoutesParams{
+-			Router:           router,
+-			Logger:           s.opts.Logger,
+-			URLPrefix:        s.opts.UIPrefix,
+-			Host:             host,
+-			EnablePlayground: s.opts.EnableGraphQLPlayground,
+-		})
+-	} else {
+-		s.opts.Logger.Debug("GraphQL API is not enabled")
+-	}
+-
+-	ui.RegisterRoutes(s.opts.UIPrefix, router)
+-
+-	return s.opts.UIPrefix, router
+-}

@@ -1,0 +1,334 @@
+# Go modules that may be linked into alloy-promtail.
+#
+#   <module> [if <group>...]
+#
+# A module with groups may be linked only when one of the listed component
+# groups (COMPONENT_GROUPS) is enabled. `make -C promtail deps` fails when a
+# linked module is missing here: after an upstream sync that means a new
+# dependency reached the binary. Review the printed import chain, then either
+# cut it with an overlay entry or add the module here.
+#
+# The list covers linux/amd64, linux/arm64 and darwin/arm64 builds.
+
+cloud.google.com/go if cloud
+cloud.google.com/go/auth if cloud
+cloud.google.com/go/auth/oauth2adapt if cloud
+cloud.google.com/go/compute/metadata if cloud
+cloud.google.com/go/iam if cloud
+cloud.google.com/go/pubsub/v2 if cloud
+connectrpc.com/connect
+dario.cat/mergo
+github.com/Azure/azure-sdk-for-go/sdk/azcore if cloud
+github.com/Azure/azure-sdk-for-go/sdk/azidentity if cloud
+github.com/Azure/azure-sdk-for-go/sdk/internal if cloud
+github.com/AzureAD/microsoft-authentication-library-for-go if cloud
+github.com/BobuSumisu/aho-corasick if secretfilter
+github.com/IBM/sarama if cloud
+github.com/KimMachineGun/automemlimit
+github.com/Masterminds/goutils
+github.com/Masterminds/semver/v3
+github.com/Masterminds/sprig/v3
+github.com/STARRY-S/zip if secretfilter
+github.com/alecthomas/units
+github.com/andybalholm/brotli if secretfilter
+github.com/armon/go-metrics
+github.com/aws/aws-sdk-go-v2 if cloud
+github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream if cloud
+github.com/aws/aws-sdk-go-v2/config if cloud
+github.com/aws/aws-sdk-go-v2/credentials if cloud
+github.com/aws/aws-sdk-go-v2/feature/ec2/imds if cloud
+github.com/aws/aws-sdk-go-v2/internal/configsources if cloud
+github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 if cloud
+github.com/aws/aws-sdk-go-v2/internal/v4a if cloud
+github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding if cloud
+github.com/aws/aws-sdk-go-v2/service/internal/checksum if cloud
+github.com/aws/aws-sdk-go-v2/service/internal/presigned-url if cloud
+github.com/aws/aws-sdk-go-v2/service/internal/s3shared if cloud
+github.com/aws/aws-sdk-go-v2/service/s3 if cloud
+github.com/aws/aws-sdk-go-v2/service/signin if cloud
+github.com/aws/aws-sdk-go-v2/service/sso if cloud
+github.com/aws/aws-sdk-go-v2/service/ssooidc if cloud
+github.com/aws/aws-sdk-go-v2/service/sts if cloud
+github.com/aws/smithy-go if cloud
+github.com/aymanbagabas/go-osc52/v2 if secretfilter
+github.com/beorn7/perks
+github.com/blang/semver/v4
+github.com/bmatcuk/doublestar/v4
+github.com/bodgit/plumbing if secretfilter
+github.com/bodgit/sevenzip if secretfilter
+github.com/bodgit/windows if secretfilter
+github.com/cenkalti/backoff/v4 if cloud
+github.com/cenkalti/backoff/v5
+github.com/cespare/xxhash/v2
+github.com/charmbracelet/colorprofile if secretfilter
+github.com/charmbracelet/lipgloss if secretfilter
+github.com/charmbracelet/x/ansi if secretfilter
+github.com/charmbracelet/x/cellbuf if secretfilter
+github.com/charmbracelet/x/term if secretfilter
+github.com/clipperhouse/displaywidth if secretfilter
+github.com/clipperhouse/uax29/v2 if secretfilter
+github.com/containerd/errdefs
+github.com/containerd/errdefs/pkg
+github.com/coreos/go-systemd/v22
+github.com/davecgh/go-spew if k8s cloud
+github.com/dennwc/varint
+github.com/dimchansky/utfbom
+github.com/distribution/reference
+github.com/docker/go-connections
+github.com/docker/go-units
+github.com/dsnet/compress if secretfilter
+github.com/eapache/go-resiliency if cloud
+github.com/emicklei/go-restful/v3 if k8s
+github.com/evanphx/json-patch/v5 if k8s
+github.com/fatih/color
+github.com/fatih/semgroup if secretfilter
+github.com/felixge/httpsnoop
+github.com/fsnotify/fsnotify
+github.com/fxamacker/cbor/v2
+github.com/gitleaks/go-gitdiff if secretfilter
+github.com/go-jose/go-jose/v4 if cloud
+github.com/go-kit/log
+github.com/go-logfmt/logfmt
+github.com/go-logr/logr
+github.com/go-logr/stdr
+github.com/go-openapi/jsonpointer if k8s
+github.com/go-openapi/jsonreference if k8s
+github.com/go-openapi/swag if k8s
+github.com/go-openapi/swag/cmdutils if k8s
+github.com/go-openapi/swag/conv if k8s
+github.com/go-openapi/swag/fileutils if k8s
+github.com/go-openapi/swag/jsonutils if k8s
+github.com/go-openapi/swag/loading if k8s
+github.com/go-openapi/swag/mangling if k8s
+github.com/go-openapi/swag/netutils if k8s
+github.com/go-openapi/swag/pools if k8s
+github.com/go-openapi/swag/stringutils if k8s
+github.com/go-openapi/swag/typeutils if k8s
+github.com/go-openapi/swag/yamlutils if k8s
+github.com/go-viper/mapstructure/v2
+github.com/gogo/googleapis
+github.com/gogo/protobuf
+github.com/gogo/status
+github.com/golang-jwt/jwt/v5
+github.com/golang/protobuf
+github.com/golang/snappy
+github.com/google/btree
+github.com/google/gnostic-models if k8s
+github.com/google/go-cmp
+github.com/google/renameio/v2
+github.com/google/s2a-go if cloud
+github.com/google/uuid
+github.com/googleapis/enterprise-certificate-proxy if cloud
+github.com/googleapis/gax-go/v2 if cloud
+github.com/gorilla/mux
+github.com/grafana/alloy
+github.com/grafana/alloy-remote-config
+github.com/grafana/alloy/syntax
+github.com/grafana/ckit
+github.com/grafana/cloudflare-go if cloud
+github.com/grafana/dskit
+github.com/grafana/go-gelf/v2
+github.com/grafana/jsonparser
+github.com/grafana/loki/pkg/push
+github.com/grafana/loki/v3
+github.com/grafana/otel-profiling-go
+github.com/grafana/pyroscope-go/godeltaprof
+github.com/grafana/regexp
+github.com/grpc-ecosystem/grpc-gateway/v2
+github.com/h2non/filetype if secretfilter
+github.com/hashicorp/consul/api
+github.com/hashicorp/errwrap
+github.com/hashicorp/go-cleanhttp
+github.com/hashicorp/go-hclog
+github.com/hashicorp/go-immutable-radix
+github.com/hashicorp/go-metrics
+github.com/hashicorp/go-msgpack/v2
+github.com/hashicorp/go-multierror
+github.com/hashicorp/go-retryablehttp if cloud
+github.com/hashicorp/go-rootcerts
+github.com/hashicorp/go-secure-stdlib/parseutil if cloud
+github.com/hashicorp/go-secure-stdlib/strutil if cloud
+github.com/hashicorp/go-sockaddr
+github.com/hashicorp/go-uuid if cloud
+github.com/hashicorp/go-version
+github.com/hashicorp/golang-lru
+github.com/hashicorp/golang-lru/v2
+github.com/hashicorp/hcl if cloud
+github.com/hashicorp/memberlist
+github.com/hashicorp/serf
+github.com/hashicorp/vault/api if cloud
+github.com/hashicorp/vault/api/auth/approle if cloud
+github.com/hashicorp/vault/api/auth/aws if cloud
+github.com/hashicorp/vault/api/auth/azure if cloud
+github.com/hashicorp/vault/api/auth/gcp if cloud
+github.com/hashicorp/vault/api/auth/kubernetes if cloud
+github.com/hashicorp/vault/api/auth/ldap if cloud
+github.com/hashicorp/vault/api/auth/userpass if cloud
+github.com/huandu/xstrings
+github.com/jaegertracing/jaeger-idl
+github.com/jcmturner/aescts/v2 if cloud
+github.com/jcmturner/dnsutils/v2 if cloud
+github.com/jcmturner/gofork if cloud
+github.com/jcmturner/gokrb5/v8 if cloud
+github.com/jcmturner/rpc/v2 if cloud
+github.com/jmespath-community/go-jmespath
+github.com/jpillora/backoff
+github.com/json-iterator/go
+github.com/klauspost/compress
+github.com/klauspost/pgzip if secretfilter
+github.com/kylelemons/godebug
+github.com/leodido/go-syslog/v4
+github.com/leodido/ragel-machinery
+github.com/lucasb-eyer/go-colorful if secretfilter
+github.com/mackerelio/go-osstat
+github.com/mattn/go-colorable
+github.com/mattn/go-isatty
+github.com/mattn/go-runewidth if secretfilter
+github.com/mdlayher/socket
+github.com/mdlayher/vsock
+github.com/mholt/archives if secretfilter
+github.com/miekg/dns
+github.com/mikelolasagasti/xz if secretfilter
+github.com/minio/minlz if secretfilter
+github.com/mitchellh/copystructure
+github.com/mitchellh/go-homedir
+github.com/mitchellh/mapstructure if cloud
+github.com/mitchellh/reflectwalk
+github.com/moby/docker-image-spec
+github.com/moby/moby/api
+github.com/moby/moby/client
+github.com/modern-go/concurrent
+github.com/modern-go/reflect2
+github.com/muesli/termenv if secretfilter
+github.com/munnerz/goautoneg
+github.com/mwitkow/go-conntrack
+github.com/natefinch/atomic
+github.com/nwaples/rardecode/v2 if secretfilter
+github.com/ohler55/ojg
+github.com/oklog/run if cloud
+github.com/opencontainers/go-digest
+github.com/opencontainers/image-spec
+github.com/opentracing-contrib/go-grpc
+github.com/opentracing-contrib/go-stdlib
+github.com/opentracing/opentracing-go
+github.com/oschwald/geoip2-golang
+github.com/oschwald/maxminddb-golang
+github.com/pbnjay/memory
+github.com/pelletier/go-toml/v2 if secretfilter
+github.com/pierrec/lz4/v4 if cloud secretfilter
+github.com/pires/go-proxyproto
+github.com/pkg/browser if cloud
+github.com/pkg/errors
+github.com/pmezard/go-difflib if k8s
+github.com/prometheus-community/yet-another-cloudwatch-exporter if cloud
+github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring if k8s
+github.com/prometheus/client_golang
+github.com/prometheus/client_model
+github.com/prometheus/common
+github.com/prometheus/exporter-toolkit
+github.com/prometheus/otlptranslator
+github.com/prometheus/procfs
+github.com/prometheus/prometheus
+github.com/rcrowley/go-metrics if cloud
+github.com/rivo/uniseg if secretfilter
+github.com/rogpeppe/go-internal
+github.com/rs/zerolog if secretfilter
+github.com/ryanuber/go-glob if cloud
+github.com/sagikazarmark/locafero if secretfilter
+github.com/samber/lo
+github.com/sean-/seed
+github.com/sercand/kuberesolver/v6
+github.com/shirou/gopsutil/v3
+github.com/shoenig/go-m1cpu
+github.com/shopspring/decimal
+github.com/sorairolake/lzip-go if secretfilter
+github.com/sourcegraph/conc if secretfilter
+github.com/spf13/afero if secretfilter
+github.com/spf13/cast
+github.com/spf13/cobra
+github.com/spf13/pflag
+github.com/spf13/viper if secretfilter
+github.com/stretchr/testify
+github.com/subosito/gotenv if secretfilter
+github.com/tklauser/go-sysconf
+github.com/tklauser/numcpus
+github.com/uber/jaeger-client-go
+github.com/uber/jaeger-lib
+github.com/ulikunitz/xz if secretfilter
+github.com/wasilibs/go-re2 if secretfilter
+github.com/x448/float16
+github.com/xdg-go/scram if cloud
+github.com/xdg-go/stringprep if cloud
+github.com/xo/terminfo if secretfilter
+github.com/zricethezav/gitleaks/v8 if secretfilter
+go.opencensus.io if cloud
+go.opentelemetry.io/auto/sdk
+go.opentelemetry.io/collector/consumer
+go.opentelemetry.io/collector/featuregate
+go.opentelemetry.io/collector/pdata
+go.opentelemetry.io/contrib/bridges/prometheus
+go.opentelemetry.io/contrib/exporters/autoexport
+go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux
+go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc
+go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+go.opentelemetry.io/contrib/propagators/jaeger
+go.opentelemetry.io/contrib/samplers/jaegerremote
+go.opentelemetry.io/otel
+go.opentelemetry.io/otel/exporters/jaeger
+go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc
+go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp
+go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc
+go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp
+go.opentelemetry.io/otel/exporters/otlp/otlptrace
+go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
+go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp
+go.opentelemetry.io/otel/exporters/prometheus
+go.opentelemetry.io/otel/exporters/stdout/stdoutlog
+go.opentelemetry.io/otel/exporters/stdout/stdoutmetric
+go.opentelemetry.io/otel/exporters/stdout/stdouttrace
+go.opentelemetry.io/otel/log
+go.opentelemetry.io/otel/metric
+go.opentelemetry.io/otel/sdk
+go.opentelemetry.io/otel/sdk/log
+go.opentelemetry.io/otel/sdk/metric
+go.opentelemetry.io/otel/trace
+go.opentelemetry.io/proto/otlp
+go.uber.org/atomic
+go.uber.org/goleak
+go.uber.org/multierr
+go.uber.org/zap
+go.yaml.in/yaml/v2
+go.yaml.in/yaml/v3
+go4.org if secretfilter
+golang.org/x/crypto
+golang.org/x/crypto/x509roots/fallback
+golang.org/x/exp
+golang.org/x/net
+golang.org/x/oauth2
+golang.org/x/sync
+golang.org/x/sys
+golang.org/x/term if k8s
+golang.org/x/text
+golang.org/x/time
+google.golang.org/api if cloud
+google.golang.org/genproto if cloud
+google.golang.org/genproto/googleapis/api
+google.golang.org/genproto/googleapis/rpc
+google.golang.org/grpc
+google.golang.org/protobuf
+gopkg.in/evanphx/json-patch.v4 if k8s
+gopkg.in/inf.v0
+gopkg.in/yaml.v2
+gopkg.in/yaml.v3
+k8s.io/api if k8s
+k8s.io/apimachinery
+k8s.io/client-go
+k8s.io/klog/v2
+k8s.io/kube-openapi
+k8s.io/utils
+sigs.k8s.io/controller-runtime if k8s
+sigs.k8s.io/json
+sigs.k8s.io/randfill
+sigs.k8s.io/structured-merge-diff/v6
+sigs.k8s.io/yaml if k8s

@@ -1,0 +1,98 @@
+# Packages that must not be linked into alloy-promtail.
+#
+#   <pattern> [unless <group>...]
+#
+# "=path" matches path only, "path/" matches packages below path, "path" matches
+# path and packages below it. Rules with "unless" apply only when none of the
+# listed component groups (COMPONENT_GROUPS) is enabled.
+#
+# A violation after an upstream sync means upstream started importing the
+# package from code linked into alloy-promtail: `make -C promtail deps` prints
+# the import chain; cut it with an overlay entry or drop the component.
+
+# Features removed by the overlay.
+github.com/hashicorp/go-discover
+github.com/go-git/go-git
+github.com/99designs/gqlgen
+github.com/vektah/gqlparser
+=github.com/grafana/alloy/internal/service/graphql
+github.com/grafana/alloy/internal/web
+github.com/grafana/alloy/internal/converter/internal
+github.com/grafana/alloy/internal/component/prometheus/remotewrite
+github.com/grafana/alloy/internal/component/pyroscope
+github.com/cilium/ebpf
+go.opentelemetry.io/ebpf-profiler
+
+# OpenTelemetry Collector: the runtime only needs consumer and pdata.
+github.com/open-telemetry/opentelemetry-collector-contrib
+github.com/grafana/alloy/internal/component/otelcol/
+go.opentelemetry.io/collector/component
+go.opentelemetry.io/collector/config
+go.opentelemetry.io/collector/otelcol
+go.opentelemetry.io/collector/receiver
+go.opentelemetry.io/collector/processor
+go.opentelemetry.io/collector/exporter
+go.opentelemetry.io/collector/extension
+go.opentelemetry.io/collector/service
+
+# Upstream components outside of log collection.
+github.com/grafana/alloy/internal/component/beyla
+github.com/grafana/alloy/internal/component/database_observability
+github.com/grafana/alloy/internal/component/faro
+github.com/grafana/alloy/internal/component/mimir
+github.com/grafana/alloy/internal/component/prometheus
+github.com/grafana/alloy/internal/component/loki/rules
+github.com/grafana/alloy/internal/static/integrations
+github.com/grafana/alloy/internal/mimir
+
+# Prometheus service discoveries of cloud providers and the Prometheus server.
+github.com/prometheus/prometheus/discovery/install
+github.com/prometheus/prometheus/discovery/aws
+github.com/prometheus/prometheus/discovery/azure
+github.com/prometheus/prometheus/discovery/digitalocean
+github.com/prometheus/prometheus/discovery/eureka
+github.com/prometheus/prometheus/discovery/gce
+github.com/prometheus/prometheus/discovery/hetzner
+github.com/prometheus/prometheus/discovery/ionos
+github.com/prometheus/prometheus/discovery/linode
+github.com/prometheus/prometheus/discovery/marathon
+github.com/prometheus/prometheus/discovery/nomad
+github.com/prometheus/prometheus/discovery/openstack
+github.com/prometheus/prometheus/discovery/ovhcloud
+github.com/prometheus/prometheus/discovery/puppetdb
+github.com/prometheus/prometheus/discovery/scaleway
+github.com/prometheus/prometheus/discovery/triton
+github.com/prometheus/prometheus/discovery/uyuni
+github.com/prometheus/prometheus/discovery/vultr
+github.com/prometheus/prometheus/discovery/xds
+github.com/prometheus/prometheus/discovery/zookeeper
+=github.com/prometheus/prometheus/tsdb
+github.com/prometheus/prometheus/rules
+github.com/prometheus/prometheus/scrape
+github.com/prometheus/prometheus/storage/remote
+github.com/prometheus/prometheus/web
+github.com/prometheus/alertmanager
+
+# Kubernetes.
+github.com/prometheus/prometheus/discovery/kubernetes unless k8s
+=github.com/prometheus/prometheus/promql unless k8s
+k8s.io/api unless k8s
+k8s.io/client-go/kubernetes unless k8s
+sigs.k8s.io/controller-runtime unless k8s
+github.com/prometheus-operator unless k8s
+
+# Cloud sources and secret stores.
+github.com/aws/aws-sdk-go-v2 unless cloud
+github.com/Azure unless cloud
+github.com/AzureAD unless cloud
+cloud.google.com/go unless cloud
+google.golang.org/api unless cloud
+github.com/IBM/sarama unless cloud
+github.com/twmb/franz-go unless cloud
+github.com/hashicorp/vault unless cloud
+github.com/grafana/cloudflare-go unless cloud
+
+# loki.secretfilter.
+github.com/zricethezav/gitleaks unless secretfilter
+github.com/wasilibs/go-re2 unless secretfilter
+github.com/tetratelabs/wazero unless secretfilter

@@ -1,0 +1,20 @@
+diff --git a/internal/alloycli/cmd_run.go b/internal/alloycli/cmd_run.go
+index 9d9c0355a..243c15ae1 100644
+--- a/internal/alloycli/cmd_run.go
++++ b/internal/alloycli/cmd_run.go
+@@ -96,13 +96,8 @@ run starts an HTTP server which can be used to debug Grafana Alloy or
+ force it to reload (by sending a GET or POST request to /-/reload). The listen
+ address can be changed through the --server.http.listen-addr flag.
+ 
+-By default, the HTTP server exposes a debugging UI at /. The path of the
+-debugging UI can be changed by providing a different value to
+---server.http.ui-path-prefix.
+-
+-Additionally, the HTTP server exposes the following debug endpoints:
+-
+-  /debug/pprof   Go performance profiling tools
++Go performance profiling tools are exposed at /debug/pprof when
++--server.http.enable-pprof is set.
+ 
+ If reloading the config dir/file-path fails, Grafana Alloy will continue running in
+ its last valid state. Components which failed may be be listed as unhealthy,
