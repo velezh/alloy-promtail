@@ -12,10 +12,6 @@ import (
 type Tracker interface {
 	wal.Marker
 
-	// Start loads the last marked segment from disk and begins the async processing of
-	// receive/send dataUpdate updates.
-	Start()
-
 	// UpdateReceivedData sends an update event to the tracker, that informs that some dataUpdate, coming from a particular WAL
 	// segment, has been read out of the WAL and enqueued for sending.
 	UpdateReceivedData(segmentId, dataCount int)
@@ -24,7 +20,7 @@ type Tracker interface {
 	// segment, has been delivered, or the sender has given up on it.
 	UpdateSentData(segmentId, dataCount int) // Data which was sent or given up on sending
 
-	// Stop stops the tracker, and its async processing of receive/send dataUpdate updates.
+	// Stop stops the tracker, and it's async processing of receive/send dataUpdate updates.
 	Stop()
 }
 
@@ -52,7 +48,7 @@ var _ Tracker = (*SegmentTracker)(nil)
 
 // NewSegmentTracker creates a new SegmentTracker.
 func NewSegmentTracker(file *File, maxSegmentAge time.Duration, logger *slog.Logger, metrics *Metrics) *SegmentTracker {
-	return &SegmentTracker{
+	t := &SegmentTracker{
 		lastMarkedSegment: -1, // Segment ID last marked on disk.
 		file:              file,
 		//TODO: What is a good size for the channel?
@@ -65,15 +61,15 @@ func NewSegmentTracker(file *File, maxSegmentAge time.Duration, logger *slog.Log
 		// runFindTicker will force the execution of the find markable segment routine every second
 		runFindTicker: time.NewTicker(time.Second),
 	}
-}
 
-func (t *SegmentTracker) Start() {
 	// Load the last marked segment from disk (if it exists).
 	if lastSegment := t.file.LastMarkedSegment(); lastSegment >= 0 {
 		t.lastMarkedSegment = lastSegment
 	}
 
 	t.wg.Go(t.runUpdatePendingData)
+
+	return t
 }
 
 func (t *SegmentTracker) LastMarkedSegment() int {
@@ -160,7 +156,7 @@ func (t *SegmentTracker) runUpdatePendingData() {
 
 func (t *SegmentTracker) Stop() {
 	t.runFindTicker.Stop()
-	close(t.quit)
+	t.quit <- struct{}{}
 	t.wg.Wait()
 }
 
@@ -229,7 +225,5 @@ func (n *NopTracker) LastMarkedSegment() int { return -1 }
 func (n *NopTracker) UpdateReceivedData(segmentId int, dataCount int) {}
 
 func (n *NopTracker) UpdateSentData(segmentId int, dataCount int) {}
-
-func (n *NopTracker) Start() {}
 
 func (n *NopTracker) Stop() {}

@@ -61,9 +61,7 @@ type Arguments struct {
 	Labels           map[string]string       `alloy:"labels,attr,optional"`
 	RelabelRules     alloy_relabel.Rules     `alloy:"relabel_rules,attr,optional"`
 	HTTPClientConfig *types.HTTPClientConfig `alloy:"http_client_config,block,optional"`
-	// Deprecated: RefreshInterval has no effect. It is kept so existing
-	// configurations still load.
-	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
+	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
 }
 
 // GetDefaultArguments return an instance of Arguments with the optional fields
@@ -71,6 +69,7 @@ type Arguments struct {
 func GetDefaultArguments() Arguments {
 	return Arguments{
 		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
+		RefreshInterval:  60 * time.Second,
 	}
 }
 
@@ -86,6 +85,9 @@ func (a *Arguments) Validate() error {
 	}
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	if a.HTTPClientConfig != nil {
+		if a.RefreshInterval <= 0 {
+			return fmt.Errorf("refresh_interval must be positive, got %q", a.RefreshInterval)
+		}
 		return a.HTTPClientConfig.Validate()
 	}
 
@@ -294,7 +296,10 @@ func newClient(args Arguments) (client.APIClient, error) {
 			return nil, err
 		}
 		opts = append(opts,
-			client.WithHTTPClient(&http.Client{Transport: rt}),
+			client.WithHTTPClient(&http.Client{
+				Transport: rt,
+				Timeout:   args.RefreshInterval,
+			}),
 			client.WithScheme(hostURL.Scheme),
 			client.WithHTTPHeaders(map[string]string{
 				"User-Agent": userAgent,
@@ -312,6 +317,7 @@ func newClient(args Arguments) (client.APIClient, error) {
 
 func requiresReset(newArgs, oldArgs Arguments) bool {
 	return newArgs.Host != oldArgs.Host ||
+		newArgs.RefreshInterval != oldArgs.RefreshInterval ||
 		!reflect.DeepEqual(newArgs.HTTPClientConfig, oldArgs.HTTPClientConfig) ||
 		!reflect.DeepEqual(newArgs.RelabelRules, oldArgs.RelabelRules)
 }

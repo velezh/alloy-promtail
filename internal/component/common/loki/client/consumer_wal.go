@@ -18,12 +18,15 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
-func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, wl wal.WAL, walCfg wal.Config, cfgs ...Config) (*WALConsumer, error) {
+func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, walCfg wal.Config, cfgs ...Config) (*WALConsumer, error) {
 	if len(cfgs) == 0 {
 		return nil, fmt.Errorf("at least one endpoint config must be provided")
 	}
 
-	writer := wal.NewWriter(logger, wal.NewWriterMetrics(reg), wl, walCfg)
+	writer, err := wal.NewWriter(walCfg, logger, reg, wal.NewWriterMetrics(reg))
+	if err != nil {
+		return nil, fmt.Errorf("error creating wal writer: %w", err)
+	}
 
 	c := &WALConsumer{
 		writer: writer,
@@ -43,6 +46,7 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, wl wal.WAL, 
 		// Don't allow duplicate endpoints, we have endpoint specific metrics that need at least one unique label value (name).
 		name := getEndpointName(cfg)
 		if _, ok := endpointsCheck[name]; ok {
+			c.Stop()
 			return nil, fmt.Errorf("duplicate endpoint configs are not allowed, found duplicate for name: %s", cfg.Name)
 		}
 		endpointsCheck[name] = struct{}{}
@@ -50,7 +54,6 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, wl wal.WAL, 
 		pair, err := newEndpointWatcherPair(
 			name,
 			logger,
-			wl.Dir(),
 			walCfg,
 			cfg,
 			writer,
@@ -60,11 +63,14 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, wl wal.WAL, 
 			walEndpointMetrics,
 		)
 		if err != nil {
+			c.Stop()
 			return nil, err
 		}
 
 		c.pairs = append(c.pairs, pair)
 	}
+
+	writer.Start()
 
 	return c, nil
 }
@@ -72,7 +78,6 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, wl wal.WAL, 
 func newEndpointWatcherPair(
 	name string,
 	logger *slog.Logger,
-	walDir string,
 	walCfg wal.Config,
 	cfg Config,
 	writer *wal.Writer,
@@ -82,7 +87,7 @@ func newEndpointWatcherPair(
 	endpointMetrics *walEndpointMetrics,
 ) (endpointWatcherPair, error) {
 
-	markerFile, err := marker.NewFile(logger, walDir)
+	markerFile, err := marker.NewFile(logger, walCfg.Dir)
 	if err != nil {
 		return endpointWatcherPair{}, err
 	}
@@ -90,7 +95,8 @@ func newEndpointWatcherPair(
 
 	endpoint, err := newEndpoint(metrics, cfg, logger, tracker)
 	if err != nil {
-		return endpointWatcherPair{}, fmt.Errorf("failed to create endpoint %s: %w", name, err)
+		tracker.Stop()
+		return endpointWatcherPair{}, fmt.Errorf("error starting endpoint: %w", err)
 	}
 
 	adapter := newWalEndpointAdapter(endpoint, logger, endpointMetrics.CurryWithId(name), tracker)
@@ -100,7 +106,7 @@ func newEndpointWatcherPair(
 	writer.SubscribeCleanup(adapter)
 
 	watcher := wal.NewWatcher(
-		walDir,
+		walCfg.Dir,
 		name,
 		watcherMetrics,
 		adapter,
@@ -112,39 +118,29 @@ func newEndpointWatcherPair(
 	// subscribe watcher to wal write events
 	writer.SubscribeWrite(watcher)
 
+	logger.Debug("starting WAL watcher for endpoint", "endpoint", name)
+	watcher.Start()
+
 	return endpointWatcherPair{
-		name:     name,
-		logger:   logger,
 		watcher:  watcher,
 		endpoint: adapter,
 	}, nil
 }
 
 type endpointWatcherPair struct {
-	name     string
-	logger   *slog.Logger
 	watcher  *wal.Watcher
 	endpoint *walEndpointAdapter
 }
 
-func (p endpointWatcherPair) start() {
-	// The watcher forwards entries to the endpoint as soon as it runs, so the endpoint
-	// has to be started first.
-	p.endpoint.start()
-	p.logger.Debug("starting WAL watcher for endpoint", "endpoint", p.name)
-	p.watcher.Start()
-}
-
+// stop will proceed to stop, in order, watcher and the endpoint.
 func (p endpointWatcherPair) stop(drain bool) {
 	// If drain enabled, drain the WAL.
 	if drain {
 		p.watcher.Drain()
 	}
-
-	// Watcher is stopped before the endpoint so it is not handed more entries
-	// while the endpoint drains its queues.
 	p.watcher.Stop()
 
+	// Subsequently stop the endpoint.
 	p.endpoint.stop()
 }
 
@@ -155,44 +151,36 @@ type WALConsumer struct {
 	pairs  []endpointWatcherPair
 }
 
-func (c *WALConsumer) Start() {
-	c.writer.Start()
-	for _, e := range c.pairs {
-		e.start()
-	}
+// ConsumeEntry implements DrainableConsumer.
+func (m *WALConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
+	return m.writer.WriteEntry(entry)
 }
 
-func (c *WALConsumer) ConsumeEntry(_ context.Context, entry loki.Entry) error {
-	if err := c.writer.WriteEntry(entry); err != nil {
-		return fmt.Errorf("%w: %w", ErrWALWrite, err)
-	}
-	return nil
+func (m *WALConsumer) Stop() {
+	m.stop(false)
 }
 
-// Stop stops the consumer without draining the WAL.
-func (c *WALConsumer) Stop() {
-	c.stop(false)
+// StopAndDrain will stop the consumer, its WalWriter, Write-Ahead Log watchers,
+// and endpoints accordingly. It attempt to drain the WAL completely.
+func (m *WALConsumer) StopAndDrain() {
+	m.stop(true)
 }
 
-// StopAndDrain stops the writer first so nothing new enters the WAL, then drains
-// what is left through the watchers and endpoints before stopping them.
-func (c *WALConsumer) StopAndDrain() {
-	c.stop(true)
-}
-
-func (c *WALConsumer) stop(drain bool) {
-	c.writer.Stop()
+func (m *WALConsumer) stop(drain bool) {
+	m.writer.Stop()
 
 	var stopWG sync.WaitGroup
 
-	// Stopping a pair costs up to the watcher's drain timeout plus the queue's, so pairs
-	// are stopped concurrently to pay that once rather than once per endpoint.
-	for _, pair := range c.pairs {
+	// Depending on whether drain is enabled, the maximum time stopping a watcher and it's queue can take is
+	// the drain time of the watcher + drain time queue. To minimize this, and since we keep a separate WAL for each
+	// endpoint config, each (watcher, queue) pair is stopped concurrently.
+	for _, pair := range m.pairs {
 		stopWG.Go(func() {
 			pair.stop(drain)
 		})
 	}
 
+	// wait for all pairs to be stopped
 	stopWG.Wait()
 }
 
@@ -295,13 +283,9 @@ func (c *walEndpointAdapter) AppendEntries(ctx context.Context, entries wal.RefE
 	return nil
 }
 
-func (c *walEndpointAdapter) start() {
-	c.tracker.Start()
-	c.endpoint.start()
-}
-
+// stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
+// limited by a deadline, controlled by a configured drain timeout, which is global to the stop call.
 func (c *walEndpointAdapter) stop() {
-	// tracker is stopped after endpoint since endpoint will report sent data while it drains.
 	c.endpoint.stop()
 	c.tracker.Stop()
 }

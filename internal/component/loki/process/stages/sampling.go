@@ -31,7 +31,10 @@ func (s *SamplingConfig) Validate() error {
 	return nil
 }
 
-var _ entryProcessor = (*samplingStage)(nil)
+var (
+	_ Stage          = (*samplingStage)(nil)
+	_ entryProcessor = (*samplingStage)(nil)
+)
 
 // newSamplingStage creates a SamplingStage from config using the shared probabilistic sampler.
 func newSamplingStage(cfg SamplingConfig, opts stageOpts) (*samplingStage, error) {
@@ -55,6 +58,21 @@ type samplingStage struct {
 	dropCount prometheus.Counter
 }
 
+func (m *samplingStage) Run(in chan Entry) chan Entry {
+	out := make(chan Entry)
+	go func() {
+		defer close(out)
+		for e := range in {
+			if m.sampler.ShouldSample() {
+				out <- e
+				continue
+			}
+			m.dropCount.Inc()
+		}
+	}()
+	return out
+}
+
 func (m *samplingStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
 	for _, e := range entries {
@@ -72,3 +90,6 @@ func (m *samplingStage) process(ctx context.Context, entries []Entry) error {
 
 	return m.next(ctx, entries[:dst])
 }
+
+// Cleanup implements Stage.
+func (*samplingStage) Cleanup() {}

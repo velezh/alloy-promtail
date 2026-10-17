@@ -52,9 +52,9 @@ type Component struct {
 	receiver   loki.LogsReceiver
 	fanout     *loki.Fanout
 
-	mut      sync.Mutex
-	stages   []stages.StageConfig
-	pipeline *stages.Pipeline
+	mut          sync.Mutex
+	entryHandler loki.EntryHandler
+	stages       []stages.StageConfig
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
@@ -91,8 +91,8 @@ func (c *Component) Run(ctx context.Context) error {
 		loki.Drain(c.processOut, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
-			if c.pipeline != nil {
-				c.pipeline.Stop()
+			if c.entryHandler != nil {
+				c.entryHandler.Stop()
 			}
 		})
 	}()
@@ -154,13 +154,12 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 
 		// NOTE: it is important that we only stop current pipeline if we successfully created the new one.
-		if c.pipeline != nil {
-			c.pipeline.Stop()
+		if c.entryHandler != nil {
+			c.entryHandler.Stop()
 		}
 
-		c.pipeline = pipeline
 		c.stages = newArgs.Stages
-		c.pipeline.Start(c.processIn.Chan(), c.processOut.Chan())
+		c.entryHandler = pipeline.Start(c.processIn.Chan(), c.processOut.Chan())
 	}
 
 	return nil

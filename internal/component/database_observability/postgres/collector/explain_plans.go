@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -19,8 +18,6 @@ import (
 
 	"github.com/DataDog/go-sqllexer"
 	"github.com/blang/semver/v4"
-	"github.com/lib/pq"
-	"github.com/lib/pq/pqerror"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -329,6 +326,8 @@ func (c *ExplainPlans) pruneThrottle(seen map[string]struct{}) {
 func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
+			DatabaseEngine:         "PostgreSQL",
+			DatabaseVersion:        c.dbVersion.String(),
 			QueryIdentifier:        digest,
 			GeneratedAt:            generatedAt,
 			ProcessingResult:       result,
@@ -345,7 +344,7 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 	}
 
 	logMessage := fmt.Sprintf(
-		`schema=%q digest=%q explain_plan_output=%q`,
+		`schema="%s" digest="%s" explain_plan_output="%s"`,
 		schemaName,
 		digest,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
@@ -580,7 +579,12 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 	if err != nil {
 		logger.Debug("failed to fetch explain plan json bytes", "err", err)
-		return isUnrecoverablePostgresSQLError(err)
+		for _, code := range unrecoverablePostgresSQLErrors {
+			if strings.Contains(err.Error(), code) {
+				return true
+			}
+		}
+		return false
 	}
 
 	if len(byteExplainPlanJSON) == 0 {
@@ -625,19 +629,6 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	}
 
 	return false
-}
-
-func isUnrecoverablePostgresSQLError(err error) bool {
-	for _, message := range unrecoverablePostgresSQLErrors {
-		if strings.Contains(err.Error(), message) {
-			return true
-		}
-	}
-
-	var pqErr *pq.Error
-	return errors.As(err, &pqErr) &&
-		pqErr.Code == pqerror.UndefinedObject &&
-		strings.HasPrefix(pqErr.Message, "unrecognized configuration parameter ")
 }
 
 // postgresPreparedStatementParamCount returns N for EXECUTE, where N is the highest

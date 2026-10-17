@@ -19,10 +19,6 @@
   resources:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- with .Values.configReloader.resizePolicy }}
-  resizePolicy:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
   {{- with .Values.configReloader.securityContext }}
   securityContext:
     {{- toYaml . | nindent 4 }}

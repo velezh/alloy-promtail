@@ -13,13 +13,9 @@ import (
 )
 
 // configureInteractive opens a TUI for the common runner options. Reuse
-// cluster and skip image builds default to selected (typical dev flow);
-// the regular image is selected only when --distroless=false is passed.
+// cluster and skip image builds default to selected (typical dev flow).
 func configureInteractive(cfg *config) error {
 	runOpts := []string{"reuse-cluster", "skip-image-builds"}
-	if !cfg.distroless {
-		runOpts = append(runOpts, "regular-image")
-	}
 	filterMode := "all"
 	shard := cfg.shard
 	if shard == "" {
@@ -42,7 +38,6 @@ func configureInteractive(cfg *config) error {
 				Options(
 					huh.NewOption("Reuse kind cluster if one exists", "reuse-cluster").Selected(true),
 					huh.NewOption("Skip image builds (alloy, prom-gen)", "skip-image-builds").Selected(true),
-					huh.NewOption("Use regular (non-distroless) Alloy image", "regular-image").Selected(!cfg.distroless),
 				).
 				Value(&runOpts),
 		),
@@ -82,7 +77,6 @@ func configureInteractive(cfg *config) error {
 
 	cfg.reuseCluster = slices.Contains(runOpts, "reuse-cluster")
 	cfg.skipImageBuilds = slices.Contains(runOpts, "skip-image-builds")
-	cfg.distroless = !slices.Contains(runOpts, "regular-image")
 	switch filterMode {
 	case "all":
 		cfg.shard = ""

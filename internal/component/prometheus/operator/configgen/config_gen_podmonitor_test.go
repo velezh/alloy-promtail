@@ -112,7 +112,6 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				},
 			},
 			ep: promopv1.PodMetricsEndpoint{
-				//nolint:staticcheck // covers the deprecated TargetPort, which is still supported
 				TargetPort: &intstr.IntOrString{StrVal: "http_metrics", Type: intstr.String},
 			},
 			expectedRelabels: util.Untab(`
@@ -179,7 +178,6 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				},
 			},
 			ep: promopv1.PodMetricsEndpoint{
-				//nolint:staticcheck // covers the deprecated TargetPort, which is still supported
 				TargetPort: &intstr.IntOrString{IntVal: 8080, Type: intstr.Int},
 			},
 			expectedRelabels: util.Untab(`
@@ -310,7 +308,6 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				},
 			},
 			ep: promopv1.PodMetricsEndpoint{
-				//nolint:staticcheck // covers the deprecated TargetPort, which is still supported
 				TargetPort: &intstr.IntOrString{IntVal: 8080, Type: intstr.Int},
 			},
 			expectedRelabels: util.Untab(`

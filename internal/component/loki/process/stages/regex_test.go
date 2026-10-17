@@ -1,16 +1,15 @@
 package stages
 
 import (
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/regexp"
 )
 
 var (
@@ -405,83 +404,65 @@ func TestValidateRegexConfig(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
-		name      string
-		config    string
-		expectErr bool
+		name string
+		cfg  RegexConfig
+		err  error
 	}
 
 	tests := []testCase{
 		{
-			name:      "empty config",
-			config:    ``,
-			expectErr: true,
+			name: "empty config",
+			cfg:  RegexConfig{},
+			err:  errExpressionRequired,
 		},
 		{
-			name:      "missing regex_expression",
-			config:    `source = "log"`,
-			expectErr: true,
+			name: "missing regex_expression",
+			cfg:  RegexConfig{},
+			err:  errExpressionRequired,
 		},
 		{
-			name:      "empty regex_expression",
-			config:    `expression = ""`,
-			expectErr: true,
-		},
-		{
-			name:      "invalid regex_expression",
-			config:    `expression = "(?P<ts[0-9]+).*"`,
-			expectErr: true,
+			name: "invalid regex_expression",
+			cfg:  RegexConfig{Expression: "(?P<ts[0-9]+).*"},
+			err:  errors.New(errCouldNotCompileRegex.Error() + ": error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`"),
 		},
 		{
 			name: "empty source",
-			config: `
-				expression = "(?P<ts>[0-9]+).*"
-				source = ""
-			`,
-			expectErr: true,
+			cfg: RegexConfig{
+				Expression: "(?P<ts>[0-9]+).*",
+				Source:     ptr(""),
+			},
+			err: errEmptyRegexStageSource,
 		},
 		{
-			name:   "valid without source",
-			config: `expression = "(?P<ts>[0-9]+).*"`,
+			name: "valid without source",
+			cfg: RegexConfig{
+				Expression: "(?P<ts>[0-9]+).*",
+			},
 		},
 		{
 			name: "valid with source",
-			config: `
-				expression = "(?P<ts>[0-9]+).*"
-				source = "log"
-			`,
+			cfg: RegexConfig{
+				Expression: "(?P<ts>[0-9]+).*",
+				Source:     ptr("log"),
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var cfg RegexConfig
-			err := syntax.Unmarshal([]byte(tt.config), &cfg)
-			if tt.expectErr {
-				require.Error(t, err)
-			} else {
+			_, err := validateRegexConfig(tt.cfg)
+			if tt.err == nil {
 				require.NoError(t, err)
+				return
 			}
+			require.Error(t, err)
+			require.Equal(t, tt.err.Error(), err.Error())
 		})
 	}
 }
 
-func TestRegexStageUnmarshalNestedConfig(t *testing.T) {
-	t.Parallel()
-
-	var cfg Configs
-	err := syntax.Unmarshal([]byte(`
-		stage.match {
-			selector = "{app=\"loki\"}"
-			stage.regex {
-				expression = "[unclosed"
-			}
-		}
-	`), &cfg)
-	require.Error(t, err)
-}
-
 func BenchmarkRegexStage(b *testing.B) {
 	cfg := RegexConfig{
-		Expression: regexp.MustCompile("^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"),
+		Expression: "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$",
 	}
 
 	batch := loki.NewBatch()

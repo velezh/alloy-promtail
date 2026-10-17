@@ -81,7 +81,10 @@ func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
 	return expr, nil
 }
 
-var _ entryProcessor = (*dropStage)(nil)
+var (
+	_ Stage          = (*dropStage)(nil)
+	_ entryProcessor = (*dropStage)(nil)
+)
 
 // newDropStage creates a DropStage from config
 func newDropStage(config DropConfig, opts stageOpts) (*dropStage, error) {
@@ -111,6 +114,21 @@ type dropStage struct {
 	cfg       *DropConfig
 	regex     *regexp.Regexp
 	dropCount *prometheus.CounterVec
+}
+
+func (d *dropStage) Run(in chan Entry) chan Entry {
+	out := make(chan Entry)
+	go func() {
+		defer close(out)
+		for e := range in {
+			if !d.shouldDrop(e) {
+				out <- e
+				continue
+			}
+			d.dropCount.WithLabelValues(d.cfg.DropReason).Inc()
+		}
+	}()
+	return out
 }
 
 func (d *dropStage) process(ctx context.Context, entries []Entry) error {
@@ -236,3 +254,5 @@ func splitSource(s string) []string {
 	}
 	return strings.Split(s, ",")
 }
+
+func (d *dropStage) Cleanup() {}

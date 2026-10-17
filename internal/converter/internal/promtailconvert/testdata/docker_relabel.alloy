@@ -14,10 +14,11 @@ discovery.relabel "flog_scrape" {
 }
 
 loki.source.docker "flog_scrape" {
-	host          = "unix:///var/run/docker.sock"
-	targets       = discovery.docker.flog_scrape.targets
-	forward_to    = [loki.write.default.receiver]
-	relabel_rules = discovery.relabel.flog_scrape.rules
+	host             = "unix:///var/run/docker.sock"
+	targets          = discovery.docker.flog_scrape.targets
+	forward_to       = [loki.write.default.receiver]
+	relabel_rules    = discovery.relabel.flog_scrape.rules
+	refresh_interval = "5s"
 }
 
 discovery.docker "scrape_two" {

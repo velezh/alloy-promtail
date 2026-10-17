@@ -7,6 +7,7 @@ package cloudflare
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/grafana/cloudflare-go"
@@ -29,11 +30,15 @@ func (w *wrappedClient) LogpullReceived(ctx context.Context, start, end time.Tim
 	})
 }
 
-// defaultAPIURL is the Cloudflare API base URL used when api_url is not set.
-const defaultAPIURL = "https://api.cloudflare.com/client/v4"
+var getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	var opts []cloudflare.Option
 
-var getClient = func(apiURL, apiKey, zoneID string, fields []string) (Client, error) {
-	c, err := cloudflare.NewWithAPIToken(apiKey, cloudflare.BaseURL(apiURL))
+	// Allow override API URL for Loki firehose integration tests.
+	if apiURL := os.Getenv("ALLOY_CLOUDFLARE_API_URL"); apiURL != "" {
+		opts = append(opts, cloudflare.BaseURL(apiURL))
+	}
+
+	c, err := cloudflare.NewWithAPIToken(apiKey, opts...)
 	if err != nil {
 		return nil, err
 	}

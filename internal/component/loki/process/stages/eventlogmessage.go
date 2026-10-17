@@ -33,7 +33,10 @@ func (e *EventLogMessageConfig) SetToDefault() {
 	e.Source = defaultSource
 }
 
-var _ entryProcessor = (*eventLogMessageStage)(nil)
+var (
+	_ Stage          = (*eventLogMessageStage)(nil)
+	_ entryProcessor = (*eventLogMessageStage)(nil)
+)
 
 func newEventLogMessageStage(cfg *EventLogMessageConfig, opts stageOpts) *eventLogMessageStage {
 	return &eventLogMessageStage{
@@ -47,6 +50,21 @@ type eventLogMessageStage struct {
 	next   nextFn
 	cfg    *EventLogMessageConfig
 	logger *slog.Logger
+}
+
+func (m *eventLogMessageStage) Run(in chan Entry) chan Entry {
+	out := make(chan Entry)
+	go func() {
+		defer close(out)
+		for e := range in {
+			e, err := m.processEntry(e)
+			if err != nil {
+				continue
+			}
+			out <- e
+		}
+	}()
+	return out
 }
 
 func (m *eventLogMessageStage) process(ctx context.Context, entries []Entry) error {
@@ -118,3 +136,5 @@ func (m *eventLogMessageStage) processEntry(e Entry) (Entry, error) {
 	}
 	return e, nil
 }
+
+func (*eventLogMessageStage) Cleanup() {}

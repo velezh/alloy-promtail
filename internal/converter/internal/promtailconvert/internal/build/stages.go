@@ -9,7 +9,6 @@ import (
 	"github.com/alecthomas/units"
 	"github.com/go-viper/mapstructure/v2"
 
-	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/converter/diag"
@@ -567,16 +566,9 @@ func convertRegex(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
-
-	expr, err := regexp.Compile(pCfg.Expression)
-	if err != nil {
-		addInvalidStageError(diags, cfg, err)
-		return stages.StageConfig{}, false
-	}
-
 	return stages.StageConfig{
 		RegexConfig: &stages.RegexConfig{
-			Expression: expr,
+			Expression: pCfg.Expression,
 			Source:     pCfg.Source,
 		}}, true
 }

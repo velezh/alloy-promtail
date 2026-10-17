@@ -97,9 +97,11 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 // DebugMetricsConfig implements receiver.Arguments.
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	// Underlying receiver doesn't support debug metrics.
-	cfg := otelcolCfg.DebugMetricsArguments{}
-	cfg.SetToDefault()
-	return cfg
+	// Return defaults (see: DebugMetricsArguments.SetToDefault)
+	return otelcolCfg.DebugMetricsArguments{
+		DisableHighCardinalityMetrics: true,
+		Level:                         otelcolCfg.LevelDetailed,
+	}
 }
 
 // Exporters implements receiver.Arguments.

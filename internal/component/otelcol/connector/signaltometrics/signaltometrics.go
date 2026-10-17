@@ -57,7 +57,7 @@ var (
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
-	ErrorMode: ottl.IgnoreError,
+	ErrorMode: ottl.PropagateError,
 }
 
 // SetToDefault implements syntax.Defaulter.

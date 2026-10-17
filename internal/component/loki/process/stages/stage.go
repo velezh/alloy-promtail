@@ -3,15 +3,45 @@ package stages
 import (
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 )
+
+// Processor takes an existing set of labels, timestamp and log entry and returns either a possibly mutated
+// timestamp and log entry
+type Processor interface {
+	Process(labels model.LabelSet, extracted map[string]any, time *time.Time, entry *string)
+}
 
 type Entry struct {
 	Extracted map[string]any
 	loki.Entry
+}
+
+// Stage can receive entries via an inbound channel and forward mutated entries to an outbound channel.
+type Stage interface {
+	Run(chan Entry) chan Entry
+	Cleanup()
+}
+
+// Stopper is an optional interface for stages that need an out-of-band signal
+// to unblock goroutines during shutdown. Implementations must not block,
+// panic, or assume Run has stopped.
+type Stopper interface {
+	Stop()
+}
+
+// newStage creates a new stage for the given type and configuration.
+func newStage(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+	return newStageWithOpts(cfg, stageOpts{
+		slogger:      slogger,
+		registerer:   registerer,
+		minStability: minStability,
+	})
 }
 
 type stageOpts struct {
@@ -25,11 +55,11 @@ type stageOpts struct {
 func newStageWithOpts(
 	cfg StageConfig,
 	opts stageOpts,
-) (entryProcessor, error) {
+) (Stage, error) {
 
 	var (
+		s   Stage
 		err error
-		s   entryProcessor
 	)
 	switch {
 	case cfg.DockerConfig != nil:
@@ -57,25 +87,37 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LabelsConfig != nil:
-		s = newLabelStage(*cfg.LabelsConfig, opts)
+		s, err = newLabelStage(*cfg.LabelsConfig, opts)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.StructuredMetadata != nil:
 		s, err = newStructuredMetadataStage(*cfg.StructuredMetadata, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.StructuredMetadataDropConfig != nil:
-		s = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
+		s, err = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.RegexConfig != nil:
-		s = newRegexStage(*cfg.RegexConfig, opts)
+		s, err = newRegexStage(*cfg.RegexConfig, opts)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.TimestampConfig != nil:
 		s, err = newTimestampStage(*cfg.TimestampConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.OutputConfig != nil:
-		s = newOutputStage(*cfg.OutputConfig, opts)
+		s, err = newOutputStage(*cfg.OutputConfig, opts)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.MatchConfig != nil:
-		s, err = newMatchStage(*cfg.MatchConfig, opts)
+		s, err = newMatcherStage(opts.slogger, *cfg.MatchConfig, opts.registerer, opts.minStability)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +127,10 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.TenantConfig != nil:
-		s = newTenantStage(*cfg.TenantConfig, opts)
+		s, err = newTenantStage(*cfg.TenantConfig, opts)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.ReplaceConfig != nil:
 		s, err = newReplaceStage(*cfg.ReplaceConfig, opts)
 		if err != nil {
@@ -102,7 +147,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.MultilineConfig != nil:
-		s, err = newMultilineStage(*cfg.MultilineConfig, opts)
+		s, err = newMultilineStage(opts.slogger, *cfg.MultilineConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -112,14 +157,20 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LabelKeepConfig != nil:
-		s = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
+		s, err = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.LabelDropConfig != nil:
 		s, err = newLabelDropStage(*cfg.LabelDropConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.StaticLabelsConfig != nil:
-		s = newStaticLabelsStage(*cfg.StaticLabelsConfig, opts)
+		s, err = newStaticLabelsStage(*cfg.StaticLabelsConfig, opts)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.GeoIPConfig != nil:
 		s, err = newGeoIPStage(*cfg.GeoIPConfig, opts)
 		if err != nil {

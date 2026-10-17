@@ -27,7 +27,6 @@ func TestFanoutConsumer(t *testing.T) {
 
 	consumer, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), testEndpointConfig)
 	require.NoError(t, err)
-	consumer.Start()
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
 	go func() {
@@ -85,7 +84,6 @@ func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 	// start writer and consumer
 	consumer, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), testEndpointConfig, testEndpointConfig2)
 	require.NoError(t, err)
-	consumer.Start()
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
 	ctx, cancel := context.WithCancel(t.Context())
@@ -233,7 +231,6 @@ func TestFanoutConsumer_StopWithFullSendQueue(t *testing.T) {
 
 	consumer, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), endpointConfig)
 	require.NoError(t, err)
-	consumer.Start()
 
 	feedUntilBlocked(t, blocked, consumer)
 

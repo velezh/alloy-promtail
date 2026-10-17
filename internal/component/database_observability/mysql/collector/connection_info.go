@@ -14,11 +14,6 @@ import (
 
 const ConnectionInfoName = "connection_info"
 
-// EngineName is the value the mysql component uses to identify itself
-// wherever an engine identifier is needed, e.g. the connection_info metric's
-// "engine" label and the "engine" Loki label added to every log line.
-const EngineName = "mysql"
-
 type ConnectionInfoArguments struct {
 	DSN           string
 	Registry      *prometheus.Registry
@@ -69,7 +64,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		providerRegion       = "unknown"
 		providerAccount      = "unknown"
 		dbInstanceIdentifier = "unknown"
-		engine               = EngineName
+		engine               = "mysql"
 	)
 
 	if c.CloudProvider != nil {

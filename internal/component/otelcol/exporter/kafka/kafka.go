@@ -254,7 +254,7 @@ func (args *Arguments) SetToDefault() {
 			Full:            true,
 			RefreshInterval: 10 * time.Minute,
 			Retry: otelcol.KafkaMetadataRetryArguments{
-				MaxRetries: 20,
+				MaxRetries: 3,
 				Backoff:    250 * time.Millisecond,
 			},
 		},

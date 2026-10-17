@@ -9,11 +9,11 @@ import (
 )
 
 // withPrelude builds the final Alloy source for a pipeline test by prepending
-// the test sink, injecting any generated input sources and mocks, and
-// rewriting pipelinetest symbolic output references.
+// the test sink, injecting any generated input sources, and rewriting
+// pipelinetest symbolic output references.
 func withPrelude(schema TestSchema) string {
 	sink := buildSink()
-	sources := buildSources(schema.Inputs, schema.Mocks)
+	sources := buildSources(schema.Inputs)
 
 	return sink + "\n\n" + sources + "\n\n" + rewritePipelineTestRefs(string(schema.Config))
 }
@@ -32,10 +32,8 @@ func buildSink() string {
 	return `pipelinetest.sink "out" {}`
 }
 
-func buildSources(inputs InputSchema, mocks MockSchema) string {
+func buildSources(inputs InputSchema) string {
 	file := builder.NewFile()
-
-	appendMocks(file.Body(), mocks)
 
 	for i, input := range inputs.Loki {
 		if len(input.Components) == 0 {

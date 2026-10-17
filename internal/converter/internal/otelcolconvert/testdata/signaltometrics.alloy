@@ -5,6 +5,7 @@ otelcol.receiver.otlp "default" {
 
 	http {
 		endpoint            = "127.0.0.1:4318"
+		idle_timeout        = "0s"
 		write_timeout       = "0s"
 		read_header_timeout = "0s"
 	}
@@ -50,6 +51,7 @@ otelcol.connector.signaltometrics "default" {
 			value = "Len(body)"
 		}
 	}
+	error_mode = "ignore"
 
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]

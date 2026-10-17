@@ -9,8 +9,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
-	"github.com/lib/pq"
-	"github.com/lib/pq/pqerror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -126,6 +124,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_aggregation_with_case",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -242,6 +242,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_join_with_aggregate_subquery",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -386,6 +388,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_query_with_multiple_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -572,6 +576,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_subquery_in_select_clause",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -633,6 +639,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "conditional_aggregation_with_case",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -692,6 +700,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "correlated_subquery",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -817,6 +827,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "date_manipulation_with_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -847,6 +859,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "derived_table_with_aggregates",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1069,6 +1083,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "distinct_with_multiple_joins",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1185,6 +1201,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "group_by_with_having",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1274,6 +1292,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "join_and_order",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1370,6 +1390,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "multiple_aggregate_functions_with_having",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1460,6 +1482,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "multiple_joins_with_date_functions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1547,6 +1571,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "nested_subqueries_with_exists",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1633,6 +1659,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "self_join_with_date_comparison",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1748,6 +1776,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "string_functions_with_grouping",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1807,6 +1837,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "subquery_with_aggregate",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1900,6 +1932,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "union_with_different_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -2024,6 +2058,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "window_functions_with_partitioning",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -2158,6 +2194,8 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "window_functions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:   "PostgreSQL",
+					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -2687,88 +2725,6 @@ func TestPostgresPreparedStatementParamCount(t *testing.T) {
 			assert.Equal(t, tt.want, postgresPreparedStatementParamCount(tt.query))
 		})
 	}
-}
-
-func TestIsUnrecoverablePostgresSQLError(t *testing.T) {
-	tests := []struct {
-		name string
-		err  error
-		want bool
-	}{
-		{
-			name: "missing custom configuration parameter",
-			err: fmt.Errorf(
-				"failed to run explain plan: %w",
-				&pq.Error{
-					Code:    pqerror.UndefinedObject,
-					Message: `unrecognized configuration parameter "request.account_scope"`,
-				},
-			),
-			want: true,
-		},
-		{
-			name: "different undefined object",
-			err: &pq.Error{
-				Code:    pqerror.UndefinedObject,
-				Message: `type "missing_type" does not exist`,
-			},
-			want: false,
-		},
-		{
-			name: "same message with different SQLSTATE",
-			err: &pq.Error{
-				Code:    pqerror.InternalError,
-				Message: `unrecognized configuration parameter "request.account_scope"`,
-			},
-			want: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, isUnrecoverablePostgresSQLError(tt.err))
-		})
-	}
-}
-
-func TestExplainPlanDenylistsMissingCustomConfigurationParameter(t *testing.T) {
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	queryID := "123456"
-	key := explainPlanQueryKey("testdb", queryID)
-	query := "SELECT * FROM account_records WHERE account_id = $1"
-	factory := &mockDbConnectionFactory{
-		db:   db,
-		Mock: &mock,
-	}
-	explainPlan := &ExplainPlans{
-		dbDSN:               "postgres://user:pass@host:1234/database",
-		dbConnectionFactory: factory.NewDBConnection,
-		queryCache: map[string]*queryInfo{
-			key: newQueryInfo("testdb", queryID, query, 1, time.Now()),
-		},
-		queryDenylist:      make(map[string]struct{}),
-		finishedQueryCache: make(map[string]processedQueryInfo),
-		currentBatchSize:   1,
-		logger:             logging.NewSlogNop(),
-	}
-
-	mock.ExpectExec(`SET SESSION search_path TO "public"`).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec("PREPARE explain_plan_123456 AS " + query).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnError(&pq.Error{
-		Code:    pqerror.UndefinedObject,
-		Message: `unrecognized configuration parameter "request.account_scope"`,
-	})
-	mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
-
-	require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
-	assert.Contains(t, explainPlan.queryDenylist, key)
-	assert.NotContains(t, explainPlan.finishedQueryCache, key)
-	assert.Equal(t, 1, factory.InstantiationCount)
-	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestExplainPlan_PopulateQueryCache(t *testing.T) {

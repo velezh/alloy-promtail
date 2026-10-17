@@ -1,15 +1,15 @@
 package logql
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/prometheus/prometheus/model/labels"
 )
 
 // Filter is a line filter sent to a querier to filter out log line.
-type Filter func(string) bool
+type Filter func([]byte) bool
 
 // Expr is a LogQL expression.
 type Expr interface {
@@ -49,32 +49,32 @@ func NewFilterExpr(left Expr, ty labels.MatchType, match string) Expr {
 }
 
 func (e *filterExpr) Filter() (Filter, error) {
-	var f func(string) bool
+	var f func([]byte) bool
 	switch e.ty {
 	case labels.MatchRegexp:
 		re, err := regexp.Compile(e.match)
 		if err != nil {
 			return nil, err
 		}
-		f = re.MatchString
+		f = re.Match
 
 	case labels.MatchNotRegexp:
 		re, err := regexp.Compile(e.match)
 		if err != nil {
 			return nil, err
 		}
-		f = func(line string) bool {
-			return !re.MatchString(line)
+		f = func(line []byte) bool {
+			return !re.Match(line)
 		}
 
 	case labels.MatchEqual:
-		f = func(line string) bool {
-			return strings.Contains(line, e.match)
+		f = func(line []byte) bool {
+			return bytes.Contains(line, []byte(e.match))
 		}
 
 	case labels.MatchNotEqual:
-		f = func(line string) bool {
-			return !strings.Contains(line, e.match)
+		f = func(line []byte) bool {
+			return !bytes.Contains(line, []byte(e.match))
 		}
 
 	default:
@@ -86,7 +86,7 @@ func (e *filterExpr) Filter() (Filter, error) {
 		if err != nil {
 			return nil, err
 		}
-		return func(line string) bool {
+		return func(line []byte) bool {
 			return nextFilter(line) && f(line)
 		}, nil
 	}

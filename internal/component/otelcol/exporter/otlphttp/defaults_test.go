@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -30,8 +29,8 @@ func TestDefaultArguments(t *testing.T) {
 			Headers:           configopaque.MapList{},
 			Compression:       configcompression.TypeGzip,
 			WriteBufferSize:   512 * 1024,
-			MaxIdleConns:      100,              //nolint:staticcheck // migrate to confighttp Keepalive
-			IdleConnTimeout:   90 * time.Second, //nolint:staticcheck // migrate to confighttp Keepalive
+			MaxIdleConns:      100,
+			IdleConnTimeout:   90 * time.Second,
 			HTTP2PingTimeout:  15 * time.Second,
 			ForceAttemptHTTP2: true,
 		},
@@ -39,7 +38,11 @@ func TestDefaultArguments(t *testing.T) {
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
 			QueueSize:    1000,
 			NumConsumers: 10,
-			Batch:        testutils.DefaultExporterBatch(),
+			Batch: configoptional.Default(exporterhelper.BatchConfig{
+				FlushTimeout: 200 * time.Millisecond,
+				Sizer:        exporterhelper.RequestSizerTypeItems,
+				MinSize:      8192,
+			}),
 		}),
 		RetryConfig: configretry.BackOffConfig{
 			Enabled:             true,

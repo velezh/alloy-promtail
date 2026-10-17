@@ -29,17 +29,15 @@ func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandle
 		return nil, err
 	}
 
-	return &endpoint{
+	c := &endpoint{
 		cfg:     cfg,
 		logger:  logger,
 		metrics: metrics,
 		shards:  shards,
-	}, nil
-}
+	}
 
-// start starts the endpoint and must be called before the first call to enqueue.
-func (e *endpoint) start() {
-	e.shards.start(e.cfg.QueueConfig.MinShards)
+	c.shards.start(cfg.QueueConfig.MinShards)
+	return c, nil
 }
 
 // enqueue tries to enqueue an entry. It waits for room while BlockOnOverflow
@@ -66,8 +64,8 @@ func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int
 		}
 
 		if errors.Is(err, errQueueIsFull) && !e.cfg.QueueConfig.BlockOnOverflow {
-			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, reasonQueueIsFull).Inc()
-			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, reasonQueueIsFull).Add(float64(entry.Size()))
+			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Inc()
+			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Add(float64(entry.Size()))
 			return errQueueIsFull
 		}
 
@@ -77,8 +75,6 @@ func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int
 	return bo.Err()
 }
 
-// stop stops the endpoint, waiting up to the configured drain timeout for queued
-// entries to be sent before canceling in-flight requests.
 func (e *endpoint) stop() {
 	e.shards.stop()
 }

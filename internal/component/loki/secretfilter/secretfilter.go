@@ -290,19 +290,19 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 			var terminalErr error
 
-			batch.FilterMap(func(entry loki.Entry) (loki.Entry, bool) {
+			batch.FilterMap(func(entry *loki.Entry) (keep bool) {
 				if terminalErr != nil {
-					return entry, false
+					return false
 				}
 
-				newEntry, err := c.processEntry(ctx, entry)
+				newEntry, err := c.processEntry(ctx, *entry)
 				if err != nil {
 					if errors.Is(err, errProcessingTimeout) {
-						return entry, false
+						return false
 					}
 
 					terminalErr = err
-					return entry, false
+					return false
 				}
 
 				c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
@@ -313,7 +313,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 						return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
 					},
 				))
-				return newEntry, true
+				*entry = newEntry
+				return true
 			})
 
 			return batch, terminalErr

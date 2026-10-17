@@ -24,6 +24,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
+	"golang.org/x/net/http2"
 	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/component"
@@ -61,9 +62,6 @@ const (
 	// stateUpdateMinInterval is the minimum time interval between propagating peer changes to Alloy components.
 	// This allows to rate limit the number of updates when the cluster is frequently changing (e.g. during rollout).
 	stateUpdateMinInterval = time.Second
-
-	// defaultTimeout is the maximum time spent dialing or completing a TLS handshake with a peer.
-	defaultTimeout = 30 * time.Second
 )
 
 // Options are used to configure the cluster service. Options are constant for
@@ -158,16 +156,14 @@ func New(opts Options) (*Service, error) {
 		EnableTLS:     opts.EnableTLS,
 	}
 
-	// ckit gossips over bidirectional streams, which require HTTP/2.
-	httpTransport := &http.Transport{
-		Protocols: new(http.Protocols),
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+	httpTransport := &http2.Transport{
+		AllowHTTP: true,
+		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
 			return net.DialTimeout(network, addr, calcTimeout(ctx))
 		},
 	}
-
 	if opts.EnableTLS {
-		httpTransport.Protocols.SetHTTP2(true)
+		httpTransport.AllowHTTP = false
 		tlsConfig, err := loadTLSConfigFromFile(opts.TLSCAPath, opts.TLSCertPath, opts.TLSKeyPath, opts.TLSServerName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load TLS config from file: %w", err)
@@ -179,17 +175,14 @@ func New(opts Options) (*Service, error) {
 			"TLSKeyPath", opts.TLSKeyPath,
 			"TLSServerName", opts.TLSServerName,
 		)
-
-		// Leave DialTLSContext unset. The transport does the TLS handshake itself
-		// and adds h2 to the ALPN protocols, which a custom dialer would skip.
 		httpTransport.TLSClientConfig = tlsConfig
-		httpTransport.TLSHandshakeTimeout = defaultTimeout
-	} else {
-		// When TLS is not enabled we use h2c (HTTP/2 cleartext).
-		httpTransport.Protocols.SetUnencryptedHTTP2(true)
+		httpTransport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return tls.DialWithDialer(&net.Dialer{Timeout: calcTimeout(ctx)}, network, addr, cfg)
+		}
 	}
-
-	httpClient := &http.Client{Transport: httpTransport}
+	httpClient := &http.Client{
+		Transport: httpTransport,
+	}
 
 	node, err := ckit.NewNode(httpClient, ckitConfig)
 	if err != nil {
@@ -244,7 +237,7 @@ func loadTLSConfigFromFile(TLSCAPath string, TLSCertPath string, TLSKeyPath stri
 // context has a deadline earlier than our timeout, we shrink the
 // timeout to it.
 func calcTimeout(ctx context.Context) time.Duration {
-	timeout := defaultTimeout
+	timeout := 30 * time.Second
 	if dur, ok := deadlineDuration(ctx); ok && dur < timeout {
 		timeout = dur
 	}
@@ -346,7 +339,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		}
 	}
 
-	wg.Go(func() {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		limiter := rate.NewLimiter(rate.Every(stateUpdateMinInterval), 1)
 		for {
 			select {
@@ -356,10 +351,14 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 				s.notifyComponentsOfClusterChanges(ctx, limiter, host)
 			}
 		}
-	})
+	}()
 
 	if s.opts.EnableClustering && s.opts.RejoinInterval > 0 {
-		wg.Go(func() {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
 			t := time.NewTicker(s.opts.RejoinInterval)
 			defer t.Stop()
 
@@ -382,7 +381,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 					}
 				}
 			}
-		})
+		}()
 	}
 
 	<-ctx.Done()

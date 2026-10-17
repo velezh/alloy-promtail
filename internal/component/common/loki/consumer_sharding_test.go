@@ -45,18 +45,22 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		gotFirst := got[first.String()]
 		require.Equal(t, 1, gotFirst.StreamLen())
 		require.Equal(t, 1, gotFirst.EntryLen())
-		firstStream := gotFirst.Streams()[0]
-		require.Equal(t, original.streams[0].Created(), firstStream.Created())
-		require.Equal(t, first, firstStream.Labels)
-		require.Equal(t, "1", firstStream.Entries[0].Line)
+		_ = gotFirst.ConsumeStreams(func(stream Stream) error {
+			require.Equal(t, original.streams[0].Created(), stream.Created())
+			require.Equal(t, first, stream.Labels)
+			require.Equal(t, "1", stream.Entries[0].Line)
+			return nil
+		})
 
 		gotSecond := got[second.String()]
 		require.Equal(t, 1, gotSecond.StreamLen())
 		require.Equal(t, 1, gotSecond.EntryLen())
-		secondStream := gotSecond.Streams()[0]
-		require.Equal(t, original.streams[1].Created(), secondStream.Created())
-		require.Equal(t, second, secondStream.Labels)
-		require.Equal(t, "2", secondStream.Entries[0].Line)
+		_ = gotSecond.ConsumeStreams(func(stream Stream) error {
+			require.Equal(t, original.streams[1].Created(), stream.Created())
+			require.Equal(t, second, stream.Labels)
+			require.Equal(t, "2", stream.Entries[0].Line)
+			return nil
+		})
 	})
 
 	t.Run("single stream fast path", func(t *testing.T) {
@@ -80,10 +84,12 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		got := batches[0]
 		require.Equal(t, 1, got.StreamLen())
 		require.Equal(t, 2, got.EntryLen())
-		stream := got.Streams()[0]
-		require.Equal(t, labels, stream.Labels)
-		require.Equal(t, "1", stream.Entries[0].Line)
-		require.Equal(t, "2", stream.Entries[1].Line)
+		_ = got.ConsumeStreams(func(stream Stream) error {
+			require.Equal(t, labels, stream.Labels)
+			require.Equal(t, "1", stream.Entries[0].Line)
+			require.Equal(t, "2", stream.Entries[1].Line)
+			return nil
+		})
 	})
 
 	t.Run("preserves backpressure per shard", func(t *testing.T) {

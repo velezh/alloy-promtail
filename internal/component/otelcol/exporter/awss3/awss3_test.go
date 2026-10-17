@@ -35,6 +35,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -47,6 +48,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -62,6 +64,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -77,6 +80,23 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
+			},
+		},
+		{
+			testName: "explicit_debug_level",
+			agentCfg: `
+			s3_uploader {
+				s3_bucket = "test"
+				s3_prefix = "logs"
+			}
+			debug_metrics {
+				level = "none"
+			}
+			`,
+			expected: otelcolCfg.DebugMetricsArguments{
+				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelNone,
 			},
 		},
 	}

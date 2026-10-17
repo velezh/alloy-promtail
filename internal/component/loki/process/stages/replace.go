@@ -41,7 +41,10 @@ func validateReplaceConfig(c ReplaceConfig) (*regexp.Regexp, *template.Template,
 	return expr, templ, nil
 }
 
-var _ entryProcessor = (*replaceStage)(nil)
+var (
+	_ Stage          = (*replaceStage)(nil)
+	_ entryProcessor = (*replaceStage)(nil)
+)
 
 // newReplaceStage creates a replaceStage
 func newReplaceStage(config ReplaceConfig, opts stageOpts) (*replaceStage, error) {
@@ -68,12 +71,22 @@ type replaceStage struct {
 	template   *template.Template
 }
 
+// Run implements Stage.
+func (r *replaceStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		return r.processEntry(e)
+	})
+}
+
 func (r *replaceStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = r.processEntry(entries[i])
 	}
 	return r.next(ctx, entries)
 }
+
+// Cleanup implements Stage.
+func (r *replaceStage) Cleanup() {}
 
 func (r *replaceStage) processEntry(e Entry) Entry {
 	// If a source key is provided, the replace stage should process it

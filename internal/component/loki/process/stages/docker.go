@@ -11,7 +11,10 @@ import (
 
 type DockerConfig struct{}
 
-var _ entryProcessor = (*dockerStage)(nil)
+var (
+	_ Stage          = (*dockerStage)(nil)
+	_ entryProcessor = (*dockerStage)(nil)
+)
 
 func newDockerStage(opts stageOpts) *dockerStage {
 	return &dockerStage{next: opts.next, logger: opts.slogger.With("stage", "docker")}
@@ -35,6 +38,12 @@ const (
 	dockerOutput    = "output"
 	dockerTimestamp = "timestamp"
 )
+
+func (d *dockerStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		return d.processEntry(e)
+	})
+}
 
 func (d *dockerStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
@@ -80,3 +89,5 @@ func (d *dockerStage) processEntry(e Entry) Entry {
 	}
 	return e
 }
+
+func (d *dockerStage) Cleanup() {}

@@ -311,7 +311,7 @@ loki.source.syslog "local" {
 
 loki.write "local" {
   endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
+    url = "loki:3100/api/v1/push"
   }
 }
 ```

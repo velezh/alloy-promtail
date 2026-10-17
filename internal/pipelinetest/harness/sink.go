@@ -14,7 +14,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/metadata"
 	promql_parser "github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
 	promremote "github.com/prometheus/prometheus/storage/remote"
@@ -60,7 +59,6 @@ type PrometheusSample struct {
 	Timestamp time.Time
 	Value     float64
 	Histogram *histogram.FloatHistogram
-	Metadata  *metadata.Metadata
 }
 
 type Sink struct {
@@ -71,18 +69,16 @@ type Sink struct {
 	lokirecv loki.LogsReceiver
 	promrecv storage.Appendable
 
-	mux          sync.Mutex
-	lokiEntries  []loki.Entry
-	promSamples  []PrometheusSample
-	promMetadata map[string]metadata.Metadata
+	mux         sync.Mutex
+	lokiEntries []loki.Entry
+	promSamples []PrometheusSample
 }
 
 func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	s := &Sink{
-		opts:         opts,
-		args:         args,
-		lokirecv:     loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
-		promMetadata: make(map[string]metadata.Metadata),
+		opts:     opts,
+		args:     args,
+		lokirecv: loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
 	}
 
 	// An Interceptor with no next Appendable terminates the chain, so appended
@@ -104,10 +100,6 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 				Timestamp: timestampToTime(t),
 				Histogram: toFloatHistogram(h, fh),
 			})
-			return 0, nil
-		}),
-		alloyprom.WithMetadataHook(func(_ storage.SeriesRef, l labels.Labels, m metadata.Metadata, _ storage.Appender) (storage.SeriesRef, error) {
-			s.storePrometheusMetadata(l, m)
 			return 0, nil
 		}),
 	)
@@ -142,7 +134,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	// TODO: These could be configurable per test.
 	var (
 		acceptedMsgs            = remoteapi.MessageTypes{remoteapi.WriteV1MessageType, remoteapi.WriteV2MessageType}
-		appendMetadata          = true
+		appendMetadata          = false
 		ingestSTZeroSample      = false
 		enableTypeAndUnitLabels = false
 	)
@@ -198,16 +190,6 @@ func (s *Sink) appendPrometheusSample(sample PrometheusSample) {
 	s.promSamples = append(s.promSamples, sample)
 }
 
-func (s *Sink) storePrometheusMetadata(l labels.Labels, m metadata.Metadata) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
-	// For simplicity metadata is keyed by full series labels, which is what
-	// scrape and remote write v2 send. Metadata written per family, like
-	// otelcol.exporter.prometheus does, will not match any sample.
-	s.promMetadata[l.String()] = m
-}
-
 type snapshot struct {
 	loki       []loki.Entry
 	prometheus []PrometheusSample
@@ -220,21 +202,8 @@ func (s *Sink) snapshot() snapshot {
 	entries := make([]loki.Entry, len(s.lokiEntries))
 	copy(entries, s.lokiEntries)
 
-	samples := make([]PrometheusSample, 0, len(s.promSamples))
-	for _, sample := range s.promSamples {
-		var m *metadata.Metadata
-		if stored, ok := s.promMetadata[sample.Labels.String()]; ok {
-			m = &stored
-		}
-
-		samples = append(samples, PrometheusSample{
-			Labels:    sample.Labels,
-			Timestamp: sample.Timestamp,
-			Value:     sample.Value,
-			Histogram: sample.Histogram,
-			Metadata:  m,
-		})
-	}
+	samples := make([]PrometheusSample, len(s.promSamples))
+	copy(samples, s.promSamples)
 
 	return snapshot{
 		loki:       entries,

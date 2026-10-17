@@ -154,9 +154,10 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 	logRecords := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords()
 	logRecords.EnsureCapacity(batch.EntryLen())
 
-	for _, stream := range batch.Streams() {
+	_ = batch.ConsumeStreams(func(stream loki.Stream) error {
 		appendToLogRecords(logRecords, stream.Labels, stream.Entries...)
-	}
+		return nil
+	})
 
 	return c.logsSink.ConsumeLogs(ctx, logs)
 }

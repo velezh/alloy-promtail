@@ -22,17 +22,21 @@ type AlloyOptions struct {
 	ConfigPath string
 	// ValuesPath is an optional helm values file applied to the Alloy chart.
 	ValuesPath string
-	// ForwardPorts are Service ports made reachable from the test via Endpoint.
-	// Ports other than alloy.listenPort must be exposed with alloy.extraPorts.
-	ForwardPorts []int
+	// PortForward makes Alloy's HTTP server reachable from the test via Endpoint.
+	PortForward bool
+	// HTTPPort must match alloy.listenPort when ValuesPath overrides it.
+	HTTPPort int
 }
 
 type Alloy struct {
-	opts             AlloyOptions
-	installed        bool
-	localPorts       map[int]string
-	stopPortForwards []func()
+	opts            AlloyOptions
+	installed       bool
+	localPort       string
+	stopPortForward func()
 }
+
+// defaultAlloyHTTPPort is the chart's alloy.listenPort default.
+const defaultAlloyHTTPPort = 12345
 
 func NewAlloy(opts AlloyOptions) *Alloy {
 	return &Alloy{opts: opts}
@@ -99,15 +103,18 @@ func (a *Alloy) Install(ctx *harness.TestContext) error {
 	}
 	a.installed = true
 
-	a.localPorts = make(map[int]string, len(a.opts.ForwardPorts))
-	for _, port := range a.opts.ForwardPorts {
+	if a.opts.PortForward {
+		port := a.opts.HTTPPort
+		if port == 0 {
+			port = defaultAlloyHTTPPort
+		}
 		localPort, stop, pfErr := startPortForwardWithRetries(a.opts.Namespace, a.opts.Release, 5, strconv.Itoa(port))
 		if pfErr != nil {
 			a.Cleanup()
 			return pfErr
 		}
-		a.localPorts[port] = localPort
-		a.stopPortForwards = append(a.stopPortForwards, stop)
+		a.localPort = localPort
+		a.stopPortForward = stop
 	}
 
 	ctx.AddDiagnosticHook("alloy logs", func(c context.Context) error {
@@ -118,22 +125,14 @@ func (a *Alloy) Install(ctx *harness.TestContext) error {
 	return nil
 }
 
-// Endpoint returns a URL for path on the given Service port. Fails if port is
-// not in ForwardPorts.
-func (a *Alloy) Endpoint(port int, path string) (string, error) {
-	localPort, ok := a.localPorts[port]
-	if !ok {
-		return "", fmt.Errorf("alloy port %d is not in ForwardPorts", port)
-	}
-	return "http://localhost:" + localPort + path, nil
+// Endpoint returns a URL for path on Alloy's HTTP server. Requires PortForward.
+func (a *Alloy) Endpoint(path string) string {
+	return "http://localhost:" + a.localPort + path
 }
 
 func (a *Alloy) Cleanup() {
-	for _, stop := range a.stopPortForwards {
-		_ = util.Step("stop alloy port-forward", func() error {
-			stop()
-			return nil
-		})
+	if a.stopPortForward != nil {
+		a.stopPortForward()
 	}
 	if !a.installed {
 		return

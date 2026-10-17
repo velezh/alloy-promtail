@@ -162,6 +162,7 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 				Source: jaeger_remote_sampling.ArgumentsSource{File: "remote.json"},
 				DebugMetrics: otelcolCfg.DebugMetricsArguments{
 					DisableHighCardinalityMetrics: true,
+					Level:                         otelcolCfg.LevelDetailed,
 				},
 			},
 		},
@@ -178,6 +179,7 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 				Source: jaeger_remote_sampling.ArgumentsSource{File: "remote.json"},
 				DebugMetrics: otelcolCfg.DebugMetricsArguments{
 					DisableHighCardinalityMetrics: true,
+					Level:                         otelcolCfg.LevelDetailed,
 				},
 			},
 		},
@@ -202,6 +204,7 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 				Source: jaeger_remote_sampling.ArgumentsSource{File: "remote.json"},
 				DebugMetrics: otelcolCfg.DebugMetricsArguments{
 					DisableHighCardinalityMetrics: true,
+					Level:                         otelcolCfg.LevelDetailed,
 				},
 			},
 		},
@@ -221,6 +224,7 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 				Source: jaeger_remote_sampling.ArgumentsSource{File: "remote.json"},
 				DebugMetrics: otelcolCfg.DebugMetricsArguments{
 					DisableHighCardinalityMetrics: true,
+					Level:                         otelcolCfg.LevelDetailed,
 				},
 			},
 		},
@@ -250,6 +254,7 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 				},
 				DebugMetrics: otelcolCfg.DebugMetricsArguments{
 					DisableHighCardinalityMetrics: true,
+					Level:                         otelcolCfg.LevelDetailed,
 				},
 			},
 		},

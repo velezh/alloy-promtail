@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -149,41 +148,26 @@ func TestStructuredMetadataDropStage(t *testing.T) {
 
 func TestValidateStructuredMetadataDropConfig(t *testing.T) {
 	type testCase struct {
-		name      string
-		config    string
-		expectErr bool
+		name   string
+		config StructuredMetadataDropConfig
+		err    error
 	}
 
 	tests := []testCase{
 		{
-			name:      "empty list of values",
-			config:    `values = [ ]`,
-			expectErr: true,
-		},
-		{
-			name:      "missing values attribute",
-			config:    ``,
-			expectErr: true,
-		},
-		{
-			name:   "with a value",
-			config: `values = [ "1" ]`,
+			name:   "empty config",
+			config: StructuredMetadataDropConfig{},
+			err:    errEmptyStructuredMetadataDropStageConfig,
 		},
 		{
 			name:   "with values",
-			config: `values = [ "1", "2" ]`,
+			config: StructuredMetadataDropConfig{Values: []string{"1"}},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var cfg StructuredMetadataDropConfig
-			err := syntax.Unmarshal([]byte(tt.config), &cfg)
-			if tt.expectErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+			require.ErrorIs(t, validateStructuredMetadataDropConfig(tt.config), tt.err)
 		})
 	}
 }

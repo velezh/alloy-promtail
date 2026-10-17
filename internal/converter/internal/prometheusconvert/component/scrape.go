@@ -82,6 +82,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		LabelValueLengthLimit:          scrapeConfig.LabelValueLengthLimit,
 		HTTPClientConfig:               *common.ToHttpClientConfig(&scrapeConfig.HTTPClientConfig),
 		ExtraMetrics:                   false,
+		EnableProtobufNegotiation:      false,
 		ConvertClassicHistogramsToNHCB: histogramsToNHCB,
 		EnableCompression:              scrapeConfig.EnableCompression,
 		NativeHistogramBucketLimit:     scrapeConfig.NativeHistogramBucketLimit,

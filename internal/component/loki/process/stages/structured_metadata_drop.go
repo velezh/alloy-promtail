@@ -17,27 +17,41 @@ type StructuredMetadataDropConfig struct {
 	Values []string `alloy:"values,attr"`
 }
 
-func (s *StructuredMetadataDropConfig) Validate() error {
-	if len(s.Values) < 1 {
+func validateStructuredMetadataDropConfig(cfg StructuredMetadataDropConfig) error {
+	if len(cfg.Values) < 1 {
 		return errEmptyStructuredMetadataDropStageConfig
 	}
 	return nil
 }
 
-var _ entryProcessor = (*structuredMetadataDropStage)(nil)
+var (
+	_ Stage          = (*structuredMetadataDropStage)(nil)
+	_ entryProcessor = (*structuredMetadataDropStage)(nil)
+)
 
-func newStructuredMetadataDropStage(config StructuredMetadataDropConfig, opts stageOpts) *structuredMetadataDropStage {
+func newStructuredMetadataDropStage(config StructuredMetadataDropConfig, opts stageOpts) (*structuredMetadataDropStage, error) {
+	if err := validateStructuredMetadataDropConfig(config); err != nil {
+		return nil, err
+	}
+
 	return &structuredMetadataDropStage{
 		next:   opts.next,
 		config: &config,
 		logger: opts.slogger.With("stage", "structured_metadata_drop"),
-	}
+	}, nil
 }
 
 type structuredMetadataDropStage struct {
 	next   nextFn
 	config *StructuredMetadataDropConfig
 	logger *slog.Logger
+}
+
+// Run implements Stage
+func (s *structuredMetadataDropStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		return s.processEntry(e)
+	})
 }
 
 func (s *structuredMetadataDropStage) process(ctx context.Context, entries []Entry) error {
@@ -55,3 +69,6 @@ func (s *structuredMetadataDropStage) processEntry(e Entry) Entry {
 	}
 	return e
 }
+
+// Cleanup implements Stage.
+func (*structuredMetadataDropStage) Cleanup() {}

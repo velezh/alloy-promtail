@@ -63,7 +63,9 @@ func init() {
 // from a dnsmasq server.
 func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	dnsmasqConfig := collector.Config{
-		DnsClient:    &dns.Client{},
+		DnsClient: &dns.Client{
+			SingleInflight: true,
+		},
 		DnsmasqAddr:  c.DnsmasqAddress,
 		LeasesPath:   c.LeasesPath,
 		ExposeLeases: c.ExposeLeases,

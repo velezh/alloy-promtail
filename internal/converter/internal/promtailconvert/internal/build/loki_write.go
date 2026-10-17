@@ -39,7 +39,7 @@ func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics, maxStr
 	}
 
 	return &lokiwrite.Arguments{
-		Endpoints: []lokiwrite.EndpointArguments{
+		Endpoints: []lokiwrite.EndpointOptions{
 			{
 				Name:              config.Name,
 				URL:               config.URL.String(),
@@ -53,7 +53,7 @@ func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics, maxStr
 				RemoteTimeout:     config.Timeout,
 				TenantID:          config.TenantID,
 				RetryOnHTTP429:    !config.DropRateLimitedBatches,
-				QueueConfig:       lokiwrite.GetDefaultEndpointArguments().QueueConfig,
+				QueueConfig:       lokiwrite.GetDefaultEndpointOptions().QueueConfig,
 			},
 		},
 		ExternalLabels: convertFlagLabels(config.ExternalLabels),

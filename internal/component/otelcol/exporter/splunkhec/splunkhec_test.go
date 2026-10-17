@@ -45,11 +45,11 @@ func TestConfigConversion(t *testing.T) {
 			Headers:              nil,
 			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
-			MaxIdleConns:         100, //nolint:staticcheck // migrate to confighttp Keepalive
-			MaxIdleConnsPerHost:  0,   //nolint:staticcheck // migrate to confighttp Keepalive
+			MaxIdleConns:         100,
+			MaxIdleConnsPerHost:  0,
 			MaxConnsPerHost:      0,
-			IdleConnTimeout:      90000000000, //nolint:staticcheck // migrate to confighttp Keepalive
-			DisableKeepAlives:    false,       //nolint:staticcheck // migrate to confighttp Keepalive
+			IdleConnTimeout:      90000000000,
+			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			Cookies:              configoptional.None[confighttp.CookiesConfig](),
@@ -60,12 +60,12 @@ func TestConfigConversion(t *testing.T) {
 			QueueSize:    1000,
 			StorageID:    nil,
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
-			Batch: configoptional.Some(batchWithDefaultPartition(exporterhelper.BatchConfig{
+			Batch: configoptional.Some(exporterhelper.BatchConfig{
 				FlushTimeout: 200000000,
 				Sizer:        exporterhelper.RequestSizerTypeItems,
 				MinSize:      500,
 				MaxSize:      1000,
-			})),
+			}),
 		}),
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
@@ -133,11 +133,11 @@ func TestConfigConversion(t *testing.T) {
 			Headers:              nil,
 			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
-			MaxIdleConns:         100, //nolint:staticcheck // migrate to confighttp Keepalive
-			MaxIdleConnsPerHost:  0,   //nolint:staticcheck // migrate to confighttp Keepalive
+			MaxIdleConns:         100,
+			MaxIdleConnsPerHost:  0,
 			MaxConnsPerHost:      0,
-			IdleConnTimeout:      90000000000, //nolint:staticcheck // migrate to confighttp Keepalive
-			DisableKeepAlives:    false,       //nolint:staticcheck // migrate to confighttp Keepalive
+			IdleConnTimeout:      90000000000,
+			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			ForceAttemptHTTP2:    true,
@@ -255,13 +255,4 @@ func TestConfigConversion(t *testing.T) {
 			require.Equal(t, tt.expected, cfg)
 		})
 	}
-}
-
-// batchWithDefaultPartition sets the partition settings of batch to the upstream
-// defaults. This is what a batch block without a partition block converts to.
-// PartitionConfig is unexported upstream, so it is copied as a whole.
-func batchWithDefaultPartition(batch exporterhelper.BatchConfig) exporterhelper.BatchConfig {
-	defaults := exporterhelper.NewDefaultQueueConfig().Batch
-	batch.Partition = defaults.GetOrInsertDefault().Partition
-	return batch
 }

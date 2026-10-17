@@ -12,8 +12,6 @@ import (
 	"github.com/openai/openai-go/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
-
-	"github.com/grafana/alloy/tools/internal/prcomment"
 )
 
 type aiReviewFlags struct {
@@ -140,7 +138,7 @@ func run(ctx context.Context, args aiReviewFlags) error {
 	commentBody := fmt.Sprintf("%s\n\n%s", args.Marker, aiResponse)
 
 	// Post or update comment on PR
-	if err := prcomment.Upsert(ctx, githubClient, owner, repoName, args.PRNumber, args.Marker, commentBody); err != nil {
+	if err := putComment(ctx, githubClient, owner, repoName, args.PRNumber, args.Marker, commentBody); err != nil {
 		return fmt.Errorf("failed to post comment: %w", err)
 	}
 

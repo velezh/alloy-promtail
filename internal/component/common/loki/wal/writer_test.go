@@ -2,7 +2,6 @@ package wal
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,24 +18,22 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	autil "github.com/grafana/alloy/internal/util"
 )
 
 func TestWriter(t *testing.T) {
 	t.Run("entries are written to wal", func(t *testing.T) {
 		var (
-			dir    = t.TempDir()
-			logger = slog.New(slog.DiscardHandler)
-			reg    = prometheus.NewRegistry()
-			cfg    = Config{
-				MaxSegmentAge: time.Minute,
-			}
+			dir = t.TempDir()
+			reg = prometheus.NewRegistry()
 		)
 
-		wl, err := New(logger, reg, dir)
+		writer, err := NewWriter(Config{
+			Dir:           dir,
+			MaxSegmentAge: time.Minute,
+		}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 		require.NoError(t, err)
-		defer wl.Close()
-
-		writer := NewWriter(logger, NewWriterMetrics(reg), wl, cfg)
 		defer writer.Stop()
 
 		// write entries to wal and sync
@@ -74,19 +71,16 @@ func TestWriter(t *testing.T) {
 
 	t.Run("stopped writer returns error", func(t *testing.T) {
 		var (
-			dir    = t.TempDir()
-			reg    = prometheus.NewRegistry()
-			logger = slog.New(slog.DiscardHandler)
-			cfg    = Config{
-				MaxSegmentAge: time.Minute,
-			}
+			dir = t.TempDir()
+			reg = prometheus.NewRegistry()
 		)
 
-		wl, err := New(logger, reg, dir)
-		require.NoError(t, err)
-		defer wl.Close()
+		writer, err := NewWriter(Config{
+			Dir:           dir,
+			MaxSegmentAge: time.Minute,
+		}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 
-		writer := NewWriter(logger, NewWriterMetrics(reg), wl, cfg)
+		require.NoError(t, err)
 		writer.Start()
 
 		require.NoError(t, writer.WriteEntry(loki.Entry{
@@ -111,21 +105,17 @@ func TestWriter(t *testing.T) {
 
 func TestWriter_MetricsWorkAfterRecreation(t *testing.T) {
 	var (
-		dir    = t.TempDir()
-		logger = slog.New(slog.DiscardHandler)
-		reg    = prometheus.NewRegistry()
-		cfg    = Config{
-			MaxSegmentAge: time.Minute,
-		}
+		dir = t.TempDir()
+		reg = prometheus.NewRegistry()
 	)
 
-	wl, err := New(logger, reg, dir)
+	writer, err := NewWriter(Config{
+		Dir:           dir,
+		MaxSegmentAge: time.Minute,
+	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
-	defer wl.Close()
 
-	writer := NewWriter(logger, NewWriterMetrics(reg), wl, cfg)
 	writer.Start()
-
 	entry := loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "line"})
 	writer.WriteEntry(entry)
 
@@ -141,8 +131,11 @@ func TestWriter_MetricsWorkAfterRecreation(t *testing.T) {
 
 	writer.Stop()
 
-	// Reuse the same WAL, the writer no longer owns it.
-	writer = NewWriter(logger, NewWriterMetrics(reg), wl, cfg)
+	writer, err = NewWriter(Config{
+		Dir:           dir,
+		MaxSegmentAge: time.Minute,
+	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
+	require.NoError(t, err)
 	writer.Start()
 	defer writer.Stop()
 
@@ -172,21 +165,17 @@ func (n notifySegmentsCleanedFunc) SeriesReset(segmentNum int) {
 func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 	var (
 		dir           = t.TempDir()
-		logger        = slog.New(slog.DiscardHandler)
 		reg           = prometheus.NewRegistry()
 		maxSegmentAge = time.Second * 2
-		cfg           = Config{
-			MaxSegmentAge: maxSegmentAge,
-		}
-		subscriber1 = []int{}
-		subscriber2 = []int{}
+		subscriber1   = []int{}
+		subscriber2   = []int{}
 	)
 
-	wl, err := New(logger, reg, dir)
+	writer, err := NewWriter(Config{
+		Dir:           dir,
+		MaxSegmentAge: maxSegmentAge,
+	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
-	defer wl.Close()
-
-	writer := NewWriter(logger, NewWriterMetrics(reg), wl, cfg)
 	defer writer.Stop()
 	writer.Start()
 
@@ -269,23 +258,21 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 
 func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 	var (
-		dir           = t.TempDir()
-		logger        = slog.New(slog.DiscardHandler)
-		reg           = prometheus.NewRegistry()
-		maxSegmentAge = 2 * time.Second
-		cfg           = Config{
-			MaxSegmentAge: maxSegmentAge,
-		}
+		dir                                    = t.TempDir()
+		reg                                    = prometheus.NewRegistry()
+		maxSegmentAge                          = 2 * time.Second
 		segmentsReclaimedNotificationsReceived = []int{}
 	)
 
-	wl, err := New(logger, reg, dir)
+	writer, err := NewWriter(Config{
+		Dir:           dir,
+		MaxSegmentAge: maxSegmentAge,
+	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
-	defer wl.Close()
-
-	writer := NewWriter(logger, NewWriterMetrics(reg), wl, cfg)
 	writer.Start()
-	defer writer.Stop()
+	defer func() {
+		writer.Stop()
+	}()
 
 	// add writer events subscriber
 	writer.SubscribeCleanup(notifySegmentsCleanedFunc(func(num int) {
@@ -449,21 +436,19 @@ func BenchmarkWriter_WriteEntries(b *testing.B) {
 
 func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
 	var (
-		dir    = b.TempDir()
-		logger = slog.New(slog.DiscardHandler)
-		reg    = prometheus.NewRegistry()
-		cfg    = Config{
-			MaxSegmentAge: time.Minute,
-		}
+		dir = b.TempDir()
+		reg = prometheus.NewRegistry()
 	)
 
-	wl, err := New(logger, reg, dir)
+	writer, err := NewWriter(Config{
+		Dir:           dir,
+		MaxSegmentAge: time.Minute,
+	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 	require.NoError(b, err)
-	defer wl.Close()
-
-	writer := NewWriter(logger, NewWriterMetrics(reg), wl, cfg)
 	writer.Start()
-	defer writer.Stop()
+	defer func() {
+		writer.Stop()
+	}()
 
 	for i := 0; i < lines; i++ {
 		require.NoError(b, writer.WriteEntry(

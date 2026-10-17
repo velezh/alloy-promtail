@@ -1,8 +1,7 @@
 otelcol.receiver.vcenter "default" {
-	endpoint  = "http://localhost:15672"
-	username  = "otelu"
-	password  = "abc"
-	proxy_url = "socks5://proxy.hostname.localnet:1080"
+	endpoint = "http://localhost:15672"
+	username = "otelu"
+	password = "abc"
 
 	metrics {
 		vcenter.host.cpu.utilization {
@@ -15,7 +14,7 @@ otelcol.receiver.vcenter "default" {
 			enabled = false
 		}
 	}
-	max_query_metrics = 128
+	max_query_metrics = 0
 
 	output {
 		traces = [otelcol.exporter.otlp.default.input]

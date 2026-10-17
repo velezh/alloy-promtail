@@ -5,8 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"reflect"
-
-	"github.com/grafana/alloy/syntax"
 )
 
 var errOutputSourceRequired = errors.New("output source value is required if output is specified")
@@ -17,25 +15,30 @@ type OutputConfig struct {
 	Source string `alloy:"source,attr"`
 }
 
-var _ syntax.Validator = (*OutputConfig)(nil)
-
-func (o *OutputConfig) Validate() error {
-	if o.Source == "" {
+func validateOutputConfig(config OutputConfig) error {
+	if config.Source == "" {
 		return errOutputSourceRequired
 	}
 
 	return nil
 }
 
-var _ entryProcessor = (*outputStage)(nil)
+var (
+	_ Stage          = (*outputStage)(nil)
+	_ entryProcessor = (*outputStage)(nil)
+)
 
 // newOutputStage creates a new outputStage
-func newOutputStage(config OutputConfig, opts stageOpts) *outputStage {
+func newOutputStage(config OutputConfig, opts stageOpts) (*outputStage, error) {
+	if err := validateOutputConfig(config); err != nil {
+		return nil, err
+	}
+
 	return &outputStage{
 		next:   opts.next,
 		config: config,
 		logger: opts.slogger.With("stage", "output"),
-	}
+	}, nil
 }
 
 // outputStage will mutate the incoming entry and set it from extracted data
@@ -45,12 +48,22 @@ type outputStage struct {
 	logger *slog.Logger
 }
 
+// Run implements Stage.
+func (o *outputStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		return o.processEntry(e)
+	})
+}
+
 func (o *outputStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = o.processEntry(entries[i])
 	}
 	return o.next(ctx, entries)
 }
+
+// Cleanup implements Stage.
+func (o *outputStage) Cleanup() {}
 
 func (o *outputStage) processEntry(e Entry) Entry {
 	if v, ok := e.Extracted[o.config.Source]; ok {

@@ -41,7 +41,6 @@ var defaultBackoff = backoff.Config{
 type tailerConfig struct {
 	APIToken         string
 	ZoneID           string
-	APIURL           string
 	Labels           model.LabelSet
 	Workers          int
 	PullRange        model.Duration
@@ -73,7 +72,7 @@ func newTailer(metrics *metrics, logger *slog.Logger, handler loki.LogsReceiver,
 	if err != nil {
 		return nil, err
 	}
-	client, err := getClient(config.APIURL, config.APIToken, config.ZoneID, fields)
+	client, err := getClient(config.APIToken, config.ZoneID, fields)
 	if err != nil {
 		return nil, err
 	}

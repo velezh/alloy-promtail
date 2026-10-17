@@ -320,6 +320,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -333,6 +334,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -346,6 +348,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
+				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}
