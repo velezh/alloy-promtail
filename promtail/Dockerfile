@@ -38,6 +38,11 @@ ARG TARGETPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
 
+# The image provides a bootstrap Go only: upstream raises the go directive of
+# go.mod in patch releases, and the go command fetches that toolchain, verified
+# against sum.golang.org.
+ENV GOTOOLCHAIN=auto
+
 # file is required by xx-verify. libsystemd-dev provides the headers of
 # loki.source.journal, which loads libsystemd at runtime.
 RUN apt-get update \
