@@ -176,7 +176,6 @@ jobs:
           - A patch that no longer applies: \`make -C promtail patch-start FILE=<file>\`, fix the file,
             \`make -C promtail patch-save FILE=<file>\`.
           - A changed pinned replacement: port the upstream change to \`promtail/overlay/_files/<file>\` and update its \`blob=\` pin.
-          - A newer Go in go.mod: update the golang image tag and digest in \`promtail/Dockerfile\`.
           - Other failures: see \`promtail/README.md\`.
 
           Verify with \`make -C promtail check\` and \`make -C promtail check COMPONENT_GROUPS="k8s cloud secretfilter"\`, then push.

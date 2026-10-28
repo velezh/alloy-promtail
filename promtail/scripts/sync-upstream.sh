@@ -22,8 +22,7 @@ die() {
 # Removes every path below .github/workflows except promtail-* from the index,
 # including unmerged entries, and from the working tree.
 prune_workflows() {
-	echo "pruning upstream workflows"
-	git rm -r -f --ignore-unmatch -- .github/workflows ':(exclude).github/workflows/promtail-*' | uniq
+	echo "pruned upstream workflows: $(git rm -r -f --ignore-unmatch -- .github/workflows ':(exclude).github/workflows/promtail-*' | uniq | wc -l | tr -d ' ')"
 }
 
 # Replaces every upstream path of the index and the working tree with its content in ref.
@@ -122,7 +121,7 @@ EOF
 fi
 
 status=0
-make -C promtail --no-print-directory overlay go-version || status=$?
+make -C promtail --no-print-directory overlay || status=$?
 print_summary
 
 echo
@@ -131,7 +130,6 @@ if [ $status -ne 0 ]; then
 The fork no longer builds against the merged upstream sources:
   patch:       make -C promtail patch-start FILE=<file>, fix it, make -C promtail patch-save FILE=<file>
   replace:     port the upstream change to promtail/overlay/_files/<file> and update its blob= pin
-  go-version:  update the golang image tag and digest in promtail/Dockerfile
 Then run:
   make -C promtail check
   git commit
