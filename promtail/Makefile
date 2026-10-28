@@ -3,12 +3,11 @@
 ##
 ## Targets:
 ##   build        Build $(BINARY) for GOOS/GOARCH.
-##   check        Run go-version, build, deps, test, e2e and size.
+##   check        Run build, deps, test, e2e and size.
 ##   overlay      Generate the go build overlay from overlay/manifest.txt.
 ##   deps         Fail when a denylisted package or a module missing from modules.txt is linked.
 ##   test         Run unit tests of promtail/ with the overlay.
 ##   e2e          Run the end-to-end test against $(BINARY) (host platform only).
-##   go-version   Fail when the Go image of the Dockerfile is older than go.mod requires.
 ##   size         Print the binary size.
 ##   image        Build the container image $(IMAGE).
 ##   patch-start  Apply the overlay patch of FILE to the working tree for editing.
@@ -113,17 +112,8 @@ e2e: build
 	cd $(ROOT_DIR) && ALLOY_PROMTAIL_BINARY=$(BINARY) go test -count=1 ./promtail/test/e2e/...
 
 .PHONY: check
-check: go-version build deps test e2e
+check: build deps test e2e
 	@$(MAKE) --no-print-directory size
-
-.PHONY: go-version
-go-version:
-	@want=$$(awk '$$1 == "go" { print $$2 }' $(ROOT_DIR)/go.mod); \
-	got=$$(sed -n 's/^FROM .*golang:\([0-9.]*\)-.*/\1/p' $(PROMTAIL_DIR)/Dockerfile); \
-	if [ "$$(printf '%s\n%s\n' "$$want" "$$got" | sort -V | head -n 1)" != "$$want" ]; then \
-		echo "promtail/Dockerfile builds with golang:$$got, go.mod requires go $$want: update the image tag and digest"; \
-		exit 1; \
-	fi
 
 .PHONY: size
 size:

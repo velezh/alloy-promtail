@@ -81,7 +81,8 @@ update checks or telemetry.
 
 ## Build
 
-Requires the Go version from `go.mod`. `loki.source.journal` also needs CGO and
+Requires Go 1.21 or newer; the go command fetches the toolchain `go.mod` asks
+for (`GOTOOLCHAIN=auto`). `loki.source.journal` also needs CGO and
 libsystemd headers (`apt install libsystemd-dev`); it loads `libsystemd.so.0`
 at runtime. Run make from the repository root.
 
@@ -89,7 +90,7 @@ at runtime. Run make from the repository root.
 make -C promtail build                          # build/promtail/alloy-promtail
 make -C promtail build COMPONENT_GROUPS="k8s"   # base + k8s
 make -C promtail build GOOS=linux GOARCH=arm64 CGO_ENABLED=0
-make -C promtail check                          # go-version, build, deps, test, e2e, size
+make -C promtail check                          # build, deps, test, e2e, size
 make -C promtail image IMAGE=alloy-promtail:dev # host platform image
 make -C promtail help                           # all targets and variables
 ```
@@ -97,7 +98,8 @@ make -C promtail help                           # all targets and variables
 `CGO_ENABLED=0` gives a static binary, but `loki.source.journal` becomes a stub
 that starts, logs an info message and reads nothing.
 
-`promtail/Dockerfile` cross-compiles amd64/arm64 with CGO (no emulation) into an
+`promtail/Dockerfile` cross-compiles amd64/arm64 with CGO (no emulation; the
+`golang` image only bootstraps the toolchain `go.mod` requires) into an
 Ubuntu 24.04 chisel rootfs with libc, libsystemd, ca-certificates and tzdata —
 no shell, no package manager. Linux binaries need glibc 2.34 or newer. The
 image runs as root because host logs are usually root-readable; use
@@ -166,7 +168,6 @@ silently growing the binary or changing behavior:
 | `make overlay` | a patch no longer applies or matches ambiguously, a `blob`-pinned file changed, a deleted or kept file is gone |
 | compilation | a replacement or patch no longer fits the upstream API |
 | `make deps` | a package from `denylist.txt` or a module missing from `modules.txt` gets linked; prints the import chain |
-| `make go-version` | `go.mod` requires a newer Go than the `golang` image in `promtail/Dockerfile` |
 | `TestRegisteredComponents` | the registered component set differs from the expected one |
 | `TestNewCommand*` | upstream renamed a command or flag the entry point adjusts |
 | `make e2e` | the binary stops collecting or shipping logs, or a removed endpoint responds |
@@ -192,8 +193,7 @@ release lines (`v1.19.x` → `v1.20.x`) conflicts on files the fork never
 changes; taking the upstream tree avoids that.
 
 The script also removes upstream workflows (only `promtail-*.yml` run in the
-fork), verifies the overlay and the Go version and prints which manifest paths
-changed. After a manual `git merge`, run
+fork), verifies the overlay and prints which manifest paths changed. After a manual `git merge`, run
 `promtail/scripts/sync-upstream.sh --prune-workflows`.
 
 `promtail-sync.yml` runs the same weekly and opens a pull request named after
@@ -215,7 +215,6 @@ Fixing a failed sync:
 | patch does not apply | `make -C promtail patch-start FILE=<path>` applies it, falling back to a 3-way merge with conflict markers; edit, then `make -C promtail patch-save FILE=<path>`. Works in the middle of a merge. For an ambiguous hunk add `CONTEXT=8` to `patch-save`. |
 | pinned `replace` changed | the error prints `git diff <old> <new>`; port the change to `_files/<path>` and update `blob=` |
 | denied package or new module | follow the printed import chain and cut it with a manifest entry; if the dependency is wanted, add the module to `modules.txt` (`if <group>` for a group-only module) or drop the denylist rule |
-| `go-version` | update the `golang` tag and digest in `promtail/Dockerfile` (`docker buildx imagetools inspect golang:<version>-bookworm`) |
 | `dropped by keep: <file>` in the summary | add the file to the `keep` line if the package needs it, e.g. for its `init()` |
 | component set changed | update `promtail/components/*.go` and `cmd/alloy-promtail/components*_test.go` |
 
