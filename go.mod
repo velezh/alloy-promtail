@@ -1,6 +1,6 @@
 module github.com/grafana/alloy
 
-go 1.27.2
+go 1.27.3
 
 // This local replace is required for local development and testing of the syntax submodule.
 // It is intentionally local to this module; shared remote replaces are synced from collector/builder-config.yaml.
@@ -75,7 +75,7 @@ require (
 	github.com/grafana/go-gelf/v2 v2.0.1
 	github.com/grafana/jfr-parser/pprof v0.0.4
 	github.com/grafana/jsonparser v0.0.0-20250909130937-5f438463be34
-	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
+	github.com/grafana/kafka_exporter v0.0.0-20261016145052-44e4679ca78b
 	github.com/grafana/loki/pkg/push v0.0.0-20251125172520-2f85998f1adf
 	github.com/grafana/loki/v3 v3.0.0-20260915071729-5cf8c23a258d // k324 release
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.12
@@ -504,7 +504,7 @@ require (
 	github.com/alecthomas/participle/v2 v2.1.4 // indirect
 	github.com/alecthomas/repr v0.5.2 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
-	github.com/andybalholm/brotli v1.2.4 // indirect
+	github.com/andybalholm/brotli v1.2.7 // indirect
 	github.com/antchfx/xmlquery v1.5.1 // indirect
 	github.com/antchfx/xpath v1.3.8 // indirect
 	github.com/apache/arrow-go/v18 v18.7.0 // indirect
@@ -643,7 +643,7 @@ require (
 	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.9.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.5 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/go-kit/kit v0.13.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
