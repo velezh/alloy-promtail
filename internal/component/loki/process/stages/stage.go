@@ -42,10 +42,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LogfmtConfig != nil:
-		s, err = newLogfmtStage(*cfg.LogfmtConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newLogfmtStage(*cfg.LogfmtConfig, opts)
 	case cfg.LuhnFilterConfig != nil:
 		s = newLuhnFilterStage(*cfg.LuhnFilterConfig, opts)
 	case cfg.MetricsConfig != nil:
@@ -77,17 +74,11 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.TemplateConfig != nil:
-		s, err = newTemplateStage(*cfg.TemplateConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newTemplateStage(*cfg.TemplateConfig, opts)
 	case cfg.TenantConfig != nil:
 		s = newTenantStage(*cfg.TenantConfig, opts)
 	case cfg.ReplaceConfig != nil:
-		s, err = newReplaceStage(*cfg.ReplaceConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newReplaceStage(*cfg.ReplaceConfig, opts)
 	case cfg.LimitConfig != nil:
 		s, err = newLimitStage(*cfg.LimitConfig, opts)
 		if err != nil {
