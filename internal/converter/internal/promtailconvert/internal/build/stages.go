@@ -559,11 +559,24 @@ func convertReplace(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool)
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
+
+	expr, err := regexp.Compile(pCfg.Expression)
+	if err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+
+	var t stages.Template
+	if err := t.UnmarshalText([]byte(pCfg.Replace)); err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		ReplaceConfig: &stages.ReplaceConfig{
-			Expression: pCfg.Expression,
+			Expression: *expr,
 			Source:     defaultEmpty(pCfg.Source),
-			Replace:    pCfg.Replace,
+			Replace:    t,
 		}}, true
 }
 
@@ -593,11 +606,15 @@ func convertLogfmt(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) 
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
-	return stages.StageConfig{
-		LogfmtConfig: &stages.LogfmtConfig{
-			Source:  defaultEmpty(pCfg.Source),
-			Mapping: pCfg.Mapping,
-		}}, true
+	logfmtCfg := &stages.LogfmtConfig{
+		Source:  defaultEmpty(pCfg.Source),
+		Mapping: pCfg.Mapping,
+	}
+	if err := logfmtCfg.Validate(); err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+	return stages.StageConfig{LogfmtConfig: logfmtCfg}, true
 }
 
 func convertJSONStage(iCfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
